@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL || "https://origins-software.com"
   ),
   icons: {
-    icon: "/images/origins-logo.png",
+    icon: "/origins-logo.png",
   },
 };
 
