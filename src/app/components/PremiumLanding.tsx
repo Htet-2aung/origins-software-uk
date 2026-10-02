@@ -29,6 +29,7 @@ export default function PremiumLanding() {
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
+
     if (!('IntersectionObserver' in window)) {
       nodes.forEach((node) => node.classList.add('is-visible'));
       return;
@@ -43,7 +44,7 @@ export default function PremiumLanding() {
           }
         });
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.08 },
     );
 
     nodes.forEach((node) => observer.observe(node));
@@ -53,15 +54,18 @@ export default function PremiumLanding() {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <main className="origins-landing" id="home">
+    <main className="origins-landing premium-landing" id="home">
       <div className="landing-noise" aria-hidden="true" />
-      <div className="landing-orb landing-orb-one" aria-hidden="true" />
-      <div className="landing-orb landing-orb-two" aria-hidden="true" />
+      <div className="ambient ambient-one" aria-hidden="true" />
+      <div className="ambient ambient-two" aria-hidden="true" />
+      <div className="ambient ambient-three" aria-hidden="true" />
 
       <header className="landing-header">
         <div className="landing-header-inner">
           <Link href="#home" className="brand-mark" onClick={closeMenu} aria-label="Origins home">
-            <img src="/origins-logo.png" alt="Origins" className="landing-logo" />
+            <span className="brand-logo-shell">
+              <img src="/images/origins-logo.png" alt="Origins" className="landing-logo" />
+            </span>
             <span className="brand-word">ORIGINS</span>
           </Link>
 
@@ -81,8 +85,17 @@ export default function PremiumLanding() {
             <Link href="/services" onClick={closeMenu}>Services</Link>
             <Link href="/process" onClick={closeMenu}>Process</Link>
             <Link href="/about" onClick={closeMenu}>About</Link>
-            <a href={process.env.NEXT_PUBLIC_CLIENT_PORTAL_URL || 'https://portal.origins-software.com'} className="nav-portal" onClick={closeMenu}>Client portal <span>↗</span></a>
-            <Link href="#contact" className="nav-cta" onClick={closeMenu}>Start a project <span>↗</span></Link>
+            <a
+              href={process.env.NEXT_PUBLIC_CLIENT_PORTAL_URL || 'https://portal.origins-software.com'}
+              className="nav-portal"
+              onClick={closeMenu}
+            >
+              Client portal <span aria-hidden="true">↗</span>
+            </a>
+            <Link href="#contact" className="nav-cta" onClick={closeMenu}>
+              Start a project
+              <span aria-hidden="true">↗</span>
+            </Link>
           </nav>
         </div>
       </header>
@@ -91,19 +104,33 @@ export default function PremiumLanding() {
         <div className="hero-grid-bg" aria-hidden="true" />
         <div className="hero-content shell">
           <div className="hero-copy" data-reveal>
-            <div className="eyebrow"><span className="status-dot" /> Senior-led engineering studio</div>
+            <div className="eyebrow hero-eyebrow">
+              <span className="status-dot" />
+              Senior-led engineering studio
+            </div>
+
             <h1>
               Build what <em>matters.</em>
               <br />
               Ship with confidence.
             </h1>
+
             <p className="hero-lede">
-              Origins turns complex product ideas into dependable software, infrastructure and AI systems — from first architecture to production.
+              Origins turns complex product ideas into dependable software,
+              infrastructure and AI systems — from first architecture to production.
             </p>
+
             <div className="hero-actions">
-              <Link href="/contact" className="button button-primary">Start a project <span>↗</span></Link>
-              <Link href="/work" className="button button-ghost">Explore our work <span>↓</span></Link>
+              <Link href="/contact" className="button button-primary">
+                <span>Start a project</span>
+                <span className="button-arrow" aria-hidden="true">↗</span>
+              </Link>
+              <Link href="/work" className="button button-ghost">
+                <span>Explore our work</span>
+                <span className="button-arrow" aria-hidden="true">↓</span>
+              </Link>
             </div>
+
             <div className="hero-trust">
               <span>Senior-led delivery</span>
               <span className="trust-separator" />
@@ -115,15 +142,23 @@ export default function PremiumLanding() {
 
           <div className="hero-product-wrap" data-reveal>
             <div className="hero-product-glow" aria-hidden="true" />
+
             <div className="product-window">
               <div className="window-bar">
                 <div className="window-dots"><i /><i /><i /></div>
-                <div className="window-url">origins / delivery workspace</div>
-                <span className="window-state">LIVE</span>
+                <div className="window-url">
+                  <span className="window-lock">●</span>
+                  origins / project command
+                </div>
+                <span className="window-state"><i /> LIVE</span>
               </div>
+
               <div className="window-body">
                 <aside className="window-sidebar">
-                  <div className="sidebar-logo">O</div>
+                  <div className="sidebar-brand">
+                    <img src="/images/origins-logo.png" alt="" />
+                  </div>
+
                   <span className="sidebar-line active" />
                   <span className="sidebar-line" />
                   <span className="sidebar-line" />
@@ -131,42 +166,97 @@ export default function PremiumLanding() {
                   <span className="sidebar-spacer" />
                   <span className="sidebar-line small" />
                 </aside>
+
                 <div className="window-main">
                   <div className="mock-header">
                     <div>
                       <span className="mock-kicker">PROJECT HEALTH</span>
                       <h3>Launch sequence</h3>
                     </div>
-                    <span className="mock-pill">On track</span>
+                    <span className="mock-pill"><i /> On track</span>
                   </div>
+
                   <div className="mock-metrics">
-                    <div><span>Delivery</span><strong>86%</strong></div>
-                    <div><span>Quality</span><strong>98.6%</strong></div>
-                    <div><span>Risk</span><strong>Low</strong></div>
+                    <div>
+                      <span>Delivery</span>
+                      <strong>86%</strong>
+                      <small>+12.4%</small>
+                    </div>
+                    <div>
+                      <span>Quality</span>
+                      <strong>98.6%</strong>
+                      <small>+4.2%</small>
+                    </div>
+                    <div>
+                      <span>Risk</span>
+                      <strong>Low</strong>
+                      <small>Stable</small>
+                    </div>
                   </div>
+
                   <div className="mock-chart" aria-hidden="true">
+                    <div className="chart-header">
+                      <span>Delivery velocity</span>
+                      <span>Last 30 days</span>
+                    </div>
                     <div className="chart-grid" />
                     <svg viewBox="0 0 500 180" preserveAspectRatio="none">
-                      <polyline points="0,138 60,118 115,124 168,92 225,102 278,70 340,82 398,45 455,58 500,22" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-                      <polyline points="0,164 60,150 115,154 168,124 225,132 278,112 340,118 398,94 455,99 500,82" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.28" />
+                      <defs>
+                        <linearGradient id="healthLine" x1="0" x2="1">
+                          <stop offset="0" stopColor="currentColor" stopOpacity=".18" />
+                          <stop offset=".45" stopColor="currentColor" stopOpacity=".9" />
+                          <stop offset="1" stopColor="currentColor" stopOpacity=".35" />
+                        </linearGradient>
+                        <linearGradient id="healthFill" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0" stopColor="currentColor" stopOpacity=".15" />
+                          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M0 138 C55 120 75 124 115 124 C145 124 160 92 168 92 C205 92 210 102 225 102 C250 102 265 70 278 70 C305 70 320 82 340 82 C365 82 380 45 398 45 C420 45 438 58 455 58 C475 58 490 25 500 22 L500 180 L0 180 Z"
+                        fill="url(#healthFill)"
+                      />
+                      <path
+                        d="M0 138 C55 120 75 124 115 124 C145 124 160 92 168 92 C205 92 210 102 225 102 C250 102 265 70 278 70 C305 70 320 82 340 82 C365 82 380 45 398 45 C420 45 438 58 455 58 C475 58 490 25 500 22"
+                        fill="none"
+                        stroke="url(#healthLine)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
                     </svg>
                   </div>
+
                   <div className="mock-bottom-row">
-                    <div className="mock-task"><span className="task-check">✓</span><div><b>Architecture review</b><small>Completed today</small></div></div>
-                    <div className="mock-avatar-stack"><span>A</span><span>R</span><span>+</span></div>
+                    <div className="mock-task">
+                      <span className="task-check">✓</span>
+                      <div>
+                        <b>Architecture review</b>
+                        <small>Completed today</small>
+                      </div>
+                    </div>
+                    <div className="mock-team">
+                      <span className="team-label">TEAM</span>
+                      <div className="mock-avatar-stack">
+                        <span>A</span><span>R</span><span>+</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+
             <div className="floating-note note-one"><span>↗</span> faster decisions</div>
             <div className="floating-note note-two"><span>✓</span> production ready</div>
+            <div className="floating-note note-three"><span>●</span> zero critical risk</div>
           </div>
         </div>
       </section>
 
       <section className="signal-strip shell" data-reveal>
         <div className="signal-label">What we do</div>
-        <div className="signal-copy">Product engineering <span>·</span> Cloud infrastructure <span>·</span> AI systems <span>·</span> Security <span>·</span> Data</div>
+        <div className="signal-copy">
+          Product engineering <span>·</span> Cloud infrastructure <span>·</span> AI systems <span>·</span> Security <span>·</span> Data
+        </div>
       </section>
 
       <section className="section shell" id="capabilities">
@@ -175,16 +265,27 @@ export default function PremiumLanding() {
             <div className="eyebrow">Capabilities</div>
             <h2>Technical depth,<br /><em>without the overhead.</em></h2>
           </div>
-          <p>We work where product ambition meets technical complexity. One senior team, from architecture through launch.</p>
+          <p>
+            We work where product ambition meets technical complexity.
+            One senior team, from architecture through launch.
+          </p>
         </div>
 
         <div className="services-grid">
           {services.map((service, index) => (
-            <article className="service-card" key={service.number} data-reveal style={{ '--delay': `${index * 70}ms` } as CSSProperties}>
-              <div className="service-number">{service.number}</div>
-              <div className="service-arrow">↗</div>
+            <article
+              className="service-card"
+              key={service.number}
+              data-reveal
+              style={{ '--delay': `${index * 70}ms` } as CSSProperties}
+            >
+              <div className="service-topline">
+                <div className="service-number">{service.number}</div>
+                <div className="service-arrow" aria-hidden="true">↗</div>
+              </div>
               <h3>{service.title}</h3>
               <p>{service.text}</p>
+              <div className="card-shine" aria-hidden="true" />
             </article>
           ))}
         </div>
@@ -204,8 +305,13 @@ export default function PremiumLanding() {
             {projects.map((project, index) => (
               <article className={`project-card project-${index + 1}`} key={project.title} data-reveal>
                 <div className="project-visual">
+                  <div className="project-orbit orbit-a" />
+                  <div className="project-orbit orbit-b" />
                   <div className="project-window-mini">
-                    <div className="mini-top"><span>{project.type}</span><i /></div>
+                    <div className="mini-top">
+                      <span>{project.type}</span>
+                      <i />
+                    </div>
                     <div className="mini-lines"><span /><span /><span /><span /></div>
                     <div className="mini-bars"><b /><b /><b /><b /><b /></div>
                   </div>
@@ -227,8 +333,12 @@ export default function PremiumLanding() {
           <div className="section-heading vertical" data-reveal>
             <div className="eyebrow">Our method</div>
             <h2>Move from<br /><em>uncertainty</em> to shipping.</h2>
-            <p>Every engagement is structured to reduce risk early, make decisions visible and keep the path to production short.</p>
+            <p>
+              Every engagement is structured to reduce risk early, make decisions
+              visible and keep the path to production short.
+            </p>
           </div>
+
           <div className="steps" data-reveal>
             {[
               ['01', 'Frame', 'Align on outcomes, constraints, scope and what success looks like.'],
@@ -251,9 +361,15 @@ export default function PremiumLanding() {
             <div className="eyebrow">Why Origins</div>
             <h2>Small team.<br /><em>Large technical range.</em></h2>
           </div>
+
           <div className="principles-grid">
             {principles.map(([title, text], index) => (
-              <div className="principle" key={title} data-reveal style={{ '--delay': `${index * 80}ms` } as CSSProperties}>
+              <div
+                className="principle"
+                key={title}
+                data-reveal
+                style={{ '--delay': `${index * 80}ms` } as CSSProperties}
+              >
                 <span className="principle-mark">0{index + 1}</span>
                 <h3>{title}</h3>
                 <p>{text}</p>
@@ -268,10 +384,19 @@ export default function PremiumLanding() {
           <div className="cta-orb" aria-hidden="true" />
           <div className="eyebrow">Let's build</div>
           <h2>Have a difficult problem?<br /><em>Bring it to us.</em></h2>
-          <p>Tell us what you're building, where it's stuck and what needs to be true for launch. We'll bring the technical plan.</p>
+          <p>
+            Tell us what you're building, where it's stuck and what needs to be
+            true for launch. We'll bring the technical plan.
+          </p>
           <div className="hero-actions">
-            <Link href="/contact" className="button button-primary">Start a conversation <span>↗</span></Link>
-            <Link href="/work" className="button button-ghost">See the work <span>↗</span></Link>
+            <Link href="/contact" className="button button-primary">
+              <span>Start a conversation</span>
+              <span className="button-arrow" aria-hidden="true">↗</span>
+            </Link>
+            <Link href="/work" className="button button-ghost">
+              <span>See the work</span>
+              <span className="button-arrow" aria-hidden="true">↗</span>
+            </Link>
           </div>
         </div>
       </section>
