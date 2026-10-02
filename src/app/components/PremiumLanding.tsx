@@ -64,9 +64,9 @@ export default function PremiumLanding() {
         <div className="landing-header-inner">
           <Link href="#home" className="brand-mark" onClick={closeMenu} aria-label="Origins home">
             <span className="brand-logo-shell">
-              <img src="/images/origins-logo.png" alt="Origins" className="landing-logo" />
+              <img src="/origins-logo.png" alt="Origins" className="landing-logo" />
             </span>
-            <span className="brand-word">ORIGINS</span>
+            <span className="brand-word">ORIGINS SOFTWARE</span>
           </Link>
 
           <button
