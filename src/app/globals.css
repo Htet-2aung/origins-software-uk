@@ -861,3 +861,349 @@
   bottom: 20px;
   width: 1px;
 }
+
+/* ==========================================================================\
+   ORIGINS — FINAL PREMIUM SYSTEM\
+   Consolidated visual layer for the existing global.css.
+   Keeps existing class names intact; no component markup changes required.
+   ========================================================================== */
+
+:root {
+  --ox-bg: #06100c;
+  --ox-bg-2: #091710;
+  --ox-surface: rgba(255,255,255,.045);
+  --ox-surface-strong: rgba(255,255,255,.065);
+  --ox-surface-solid: #0b1913;
+  --ox-text: #f4f8f5;
+  --ox-text-2: #b7c6be;
+  --ox-text-3: #718179;
+  --ox-green: #22e58e;
+  --ox-green-2: #0fbc70;
+  --ox-green-soft: rgba(34,229,142,.10);
+  --ox-border: rgba(255,255,255,.085);
+  --ox-border-strong: rgba(255,255,255,.14);
+  --ox-shadow: 0 24px 70px rgba(0,0,0,.26);
+  --ox-shadow-soft: 0 12px 36px rgba(0,0,0,.16);
+  --ox-radius-sm: 10px;
+  --ox-radius-md: 14px;
+  --ox-radius-lg: 20px;
+  --ox-radius-xl: 28px;
+  --ox-ease: cubic-bezier(.22,1,.36,1);
+  --ox-ease-soft: cubic-bezier(.25,.8,.25,1);
+  --ox-duration: 260ms;
+}
+
+/* Cool, clean light mode — intentionally avoids the previous warm/cream look. */
+:root[data-theme="light"],
+html[data-theme="light"],
+.light {
+  --bg-primary: #f4f7f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eaf0ed;
+  --text-primary: #101814;
+  --text-secondary: #52615a;
+  --text-muted: #7a8982;
+  --accent-primary: #0caf69;
+  --accent-secondary: #079657;
+  --accent-subtle: #dff6ea;
+  --border-subtle: rgba(15,31,23,.10);
+  --border-focus: #0caf69;
+  --gradient-accent: linear-gradient(135deg,#18cf7d 0%,#079b5b 100%);
+  --ox-bg: #f4f7f5;
+  --ox-bg-2: #eef3f0;
+  --ox-surface: rgba(255,255,255,.76);
+  --ox-surface-strong: rgba(255,255,255,.92);
+  --ox-surface-solid: #ffffff;
+  --ox-text: #101814;
+  --ox-text-2: #52615a;
+  --ox-text-3: #7a8982;
+  --ox-border: rgba(15,31,23,.09);
+  --ox-border-strong: rgba(15,31,23,.15);
+  --ox-shadow: 0 24px 60px rgba(31,52,42,.12);
+  --ox-shadow-soft: 0 12px 30px rgba(31,52,42,.08);
+}
+
+html { scroll-behavior: smooth; background: var(--ox-bg); }
+body {
+  min-width: 320px;
+  color: var(--ox-text);
+  background:
+    radial-gradient(circle at 88% -10%, rgba(34,229,142,.055), transparent 28%),
+    radial-gradient(circle at -10% 70%, rgba(34,229,142,.035), transparent 30%),
+    var(--ox-bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+*, *::before, *::after { box-sizing: border-box; }
+img, svg, video, canvas { max-width: 100%; }
+button, input, textarea, select { font: inherit; }
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+::selection { background: rgba(34,229,142,.28); color: var(--ox-text); }
+:focus-visible { outline: 2px solid var(--ox-green); outline-offset: 3px; }
+
+/* Premium surfaces. */
+.glass,
+.glass-strong {
+  border-color: var(--ox-border);
+  box-shadow: var(--ox-shadow-soft);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  backdrop-filter: blur(18px) saturate(125%);
+}
+.glass { background: var(--ox-surface); }
+.glass-strong { background: var(--ox-surface-strong); -webkit-backdrop-filter: blur(24px) saturate(130%); backdrop-filter: blur(24px) saturate(130%); }
+
+/* Prevent accidental horizontal overlap / overflow from decorative UI. */
+main, section, article, aside, header, footer, nav { min-width: 0; }
+.container, .shell, .site-nav-inner, .inner-hero, .content-section, .legal-page, .quote-band, .footer-grid, .footer-company-bar, .footer-bottom {
+  max-width: 1240px;
+}
+
+/* Headers stay stable instead of appearing as disconnected floating elements. */
+.company-site-header,
+.landing-header {
+  background: color-mix(in srgb, var(--ox-bg) 86%, transparent);
+  border-bottom: 1px solid var(--ox-border);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+.company-site-header { position: sticky; top: 0; }
+.landing-header { position: sticky; top: 0; }
+.company-site-header,
+.landing-header,
+.site-nav-inner,
+.landing-header-inner { isolation: isolate; }
+
+/* Navigation motion: restrained, consistent, no bouncing. */
+.desktop-nav a,
+.site-nav a,
+.nav-quiet,
+.mobile-nav-panel a,
+.footer-links a,
+.footer-small-links a,
+.text-link,
+.nav-cta,
+.nav-portal {
+  transition: color var(--ox-duration) var(--ox-ease-soft), background-color var(--ox-duration) var(--ox-ease-soft), border-color var(--ox-duration) var(--ox-ease-soft), transform var(--ox-duration) var(--ox-ease);
+}
+.desktop-nav a:hover,
+.site-nav a:hover,
+.nav-quiet:hover { transform: translateY(-1px); }
+
+/* Typography hierarchy. */
+.hero-copy h1,
+.section-heading h2,
+.cta-card h2,
+.inner-hero h1,
+.content-section h2,
+.legal-page h1,
+.service-row h2,
+.process-row h2,
+.work-copy h2,
+.contact-card h2,
+.contact-card-content h2 {
+  text-wrap: balance;
+}
+
+/* Buttons: clean icon/text separation and tactile press states. */
+.button,
+.button-primary,
+.button-secondary,
+.button-ghost,
+.nav-cta,
+.nav-portal {
+  position: relative;
+  isolation: isolate;
+  white-space: nowrap;
+  overflow: hidden;
+  will-change: transform;
+  transition: transform var(--ox-duration) var(--ox-ease), box-shadow var(--ox-duration) var(--ox-ease), border-color var(--ox-duration) var(--ox-ease), background-color var(--ox-duration) var(--ox-ease), color var(--ox-duration) var(--ox-ease);
+}
+.button::after,
+.button-primary::after,
+.button-secondary::after,
+.button-ghost::after,
+.nav-cta::after,
+.nav-portal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,.12) 50%, transparent 75%);
+  transform: translateX(-130%);
+  transition: transform 650ms var(--ox-ease);
+}
+.button:hover::after,
+.button-primary:hover::after,
+.button-secondary:hover::after,
+.button-ghost:hover::after,
+.nav-cta:hover::after,
+.nav-portal:hover::after { transform: translateX(130%); }
+.button:active,
+.button-primary:active,
+.button-secondary:active,
+.button-ghost:active,
+.nav-cta:active,
+.nav-portal:active { transform: translateY(1px) scale(.985); }
+.button svg,
+.button > span,
+.button > i,
+.nav-cta svg,
+.nav-portal svg { flex: 0 0 auto; }
+.button svg,
+.nav-cta svg,
+.nav-portal svg { width: 16px; height: 16px; }
+.button-primary,
+.nav-cta { box-shadow: 0 10px 28px rgba(34,229,142,.10); }
+.button-primary:hover,
+.nav-cta:hover { box-shadow: 0 16px 38px rgba(34,229,142,.16); }
+
+/* Explicit loading state for Apply / Submit / Sign in buttons. */
+.button.is-loading,
+button.is-loading,
+.button[aria-busy="true"],
+button[aria-busy="true"] {
+  pointer-events: none;
+  cursor: wait;
+  color: transparent !important;
+}
+.button.is-loading::before,
+button.is-loading::before,
+.button[aria-busy="true"]::before,
+button[aria-busy="true"]::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 50%;
+  top: 50%;
+  margin: -8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ox-spin .7s linear infinite;
+  color: var(--ox-text);
+}
+.button-primary.is-loading::before,
+button.button-primary.is-loading::before { color: #06100c; }
+@keyframes ox-spin { to { transform: rotate(360deg); } }
+
+/* Cards / panels: one consistent elevation language. */
+.feature-card,
+.service-card,
+.contact-card,
+.project-card,
+.work-card,
+.facts-card,
+.contact-outer-card,
+.modern-principle-card,
+.product-window,
+.mock-metrics > div {
+  box-shadow: 0 1px 0 rgba(255,255,255,.025) inset, var(--ox-shadow-soft);
+}
+.feature-card,
+.service-card,
+.contact-card,
+.modern-principle-card {
+  transition: transform 360ms var(--ox-ease), border-color 260ms var(--ox-ease-soft), box-shadow 360ms var(--ox-ease), background-color 260ms var(--ox-ease-soft);
+}
+.feature-card:hover,
+.service-card:hover,
+.contact-card:hover,
+.modern-principle-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 48px rgba(0,0,0,.18), 0 1px 0 rgba(255,255,255,.04) inset;
+}
+
+/* Form controls. */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  min-height: 44px;
+  border: 1px solid var(--ox-border-strong);
+  border-radius: var(--ox-radius-sm);
+  background: var(--ox-surface);
+  color: var(--ox-text);
+  box-shadow: 0 1px 0 rgba(255,255,255,.025) inset;
+  transition: border-color 220ms var(--ox-ease-soft), box-shadow 220ms var(--ox-ease-soft), background-color 220ms var(--ox-ease-soft), transform 220ms var(--ox-ease);
+}
+textarea { min-height: 120px; resize: vertical; }
+input:not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus,
+select:focus {
+  border-color: var(--ox-green);
+  box-shadow: 0 0 0 4px rgba(34,229,142,.09), 0 8px 28px rgba(0,0,0,.08);
+  outline: none;
+}
+input::placeholder,
+textarea::placeholder { color: var(--ox-text-3); }
+
+/* Scrollbars are deliberately quiet. */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar { width: 10px; }
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track { background: var(--ox-bg); }
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb { background: rgba(127,145,136,.28); border: 3px solid var(--ox-bg); border-radius: 999px; }
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover { background: rgba(34,229,142,.45); }
+
+/* Landing visuals: make motion smoother without adding constant CPU-heavy effects. */
+.hero-product-glow { filter: blur(1px); animation: ox-breathe 8s ease-in-out infinite; }
+.product-window { transform-origin: center; transition: transform 700ms var(--ox-ease), box-shadow 700ms var(--ox-ease); }
+.product-window:hover { transform: rotate(-1deg) translate3d(0,-7px,0); box-shadow: 0 42px 90px rgba(0,0,0,.34); }
+.service-card::after { transition: opacity 360ms var(--ox-ease), transform 360ms var(--ox-ease); transform: scaleX(.35); transform-origin: left; }
+.service-card:hover::after { transform: scaleX(1); }
+@keyframes ox-breathe { 0%,100% { opacity:.72; transform: translateY(22px) scale(.98); } 50% { opacity:1; transform: translateY(14px) scale(1.03); } }
+
+/* Contact decoration stays behind content and never captures pointer events. */
+.contact-outer-card,
+.contact-card-inner { isolation: isolate; }
+.contact-dot,
+.contact-card-inner .ray,
+.contact-card-inner .line { pointer-events: none; }
+.contact-card-content { position: relative; z-index: 4; min-width: 0; overflow-wrap: anywhere; }
+
+/* Page entrance: subtle and fast, rather than a dramatic slide. */
+.page-reveal { animation: ox-page-in 520ms var(--ox-ease) both; }
+@keyframes ox-page-in { from { opacity: 0; transform: translate3d(0,12px,0); } to { opacity: 1; transform: translate3d(0,0,0); } }
+
+/* Better responsive rhythm and overlap prevention. */
+@media (max-width: 980px) {
+  .hero-content { gap: 36px; }
+  .section-heading { gap: 34px; }
+  .footer-grid { gap: 30px; }
+}
+@media (max-width: 720px) {
+  .hero-content { min-height: auto; }
+  .hero-copy h1 { font-size: clamp(42px, 13vw, 66px); }
+  .hero-lede { font-size: 15px; }
+  .hero-actions { align-items: stretch; }
+  .hero-actions .button { justify-content: center; width: 100%; }
+  .section { padding: 76px 0; }
+  .section-heading { display: block; }
+  .section-heading p { margin-top: 18px; }
+  .landing-header-inner { height: 64px; }
+  .landing-header .site-nav { display: none; }
+  .mobile-menu-button { display: block; }
+  .contact-card-content { padding: 30px 28px; }
+  .service-row, .process-row { min-width: 0; }
+}
+@media (max-width: 480px) {
+  .shell { width: calc(100% - 28px); }
+  .inner-hero, .content-section, .legal-page, .quote-band { width: calc(100% - 28px); }
+  .mock-metrics { grid-template-columns: 1fr; }
+  .window-main { padding: 15px; }
+  .button, .button-primary, .button-secondary, .button-ghost { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
