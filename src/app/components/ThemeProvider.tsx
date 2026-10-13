@@ -128,6 +128,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
+    if (localStorage.getItem('origins-reduce-motion-v1') === 'true') {
+      document.documentElement.setAttribute('data-motion', 'reduce');
+    }
     const saved = localStorage.getItem('origins-theme') as ThemeName | null;
     if (saved && themes[saved]) {
       setTheme(saved);
