@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useRef, MouseEvent } from 'react';
 import SiteFooter from '@/app/components/SiteFooter';
@@ -34,26 +35,61 @@ const deliverySteps = [
   ['04', 'Launch & hand over', 'Harden, document, release and leave your team with a system it can operate.'],
 ];
 
+const mapBounds = {
+  west: -169.110266,
+  east: 190.486279,
+  north: 83.600842,
+  south: -58.508473,
+};
+
+const mercatorY = (latitude: number) => {
+  const radians = (Math.max(-85, Math.min(85, latitude)) * Math.PI) / 180;
+  return Math.log(Math.tan(Math.PI / 4 + radians / 2));
+};
+
+const mapNorth = mercatorY(mapBounds.north);
+const mapSouth = mercatorY(mapBounds.south);
+
+const supportedMarkets = [
+  { label: 'UNITED KINGDOM', latitude: 51.5072, longitude: -0.1276, labelPosition: 'left' },
+  { label: 'IRELAND', latitude: 53.3498, longitude: -6.2603, labelPosition: 'left' },
+  { label: 'ICELAND', latitude: 64.1466, longitude: -21.9426, labelPosition: 'left' },
+  { label: 'NORWAY', latitude: 59.9139, longitude: 10.7522, labelPosition: 'above' },
+  { label: 'FINLAND', latitude: 60.1699, longitude: 24.9384, labelPosition: 'right' },
+  { label: 'GERMANY', latitude: 52.5200, longitude: 13.4050, labelPosition: 'above' },
+  { label: 'FRANCE', latitude: 48.8566, longitude: 2.3522, labelPosition: 'left' },
+  { label: 'SLOVAKIA', latitude: 48.1486, longitude: 17.1077, labelPosition: 'right' },
+  { label: 'SERBIA', latitude: 44.7866, longitude: 20.4489, labelPosition: 'right' },
+  { label: 'JAPAN', latitude: 35.6762, longitude: 139.6503 },
+  { label: 'MYANMAR', latitude: 16.8409, longitude: 96.1735, labelPosition: 'above' },
+  { label: 'THAILAND', latitude: 13.7563, longitude: 100.5018 },
+  { label: 'SINGAPORE', latitude: 1.3521, longitude: 103.8198 },
+  { label: 'AUSTRALIA', latitude: -33.8688, longitude: 151.2093 },
+  { label: 'NEW ZEALAND', latitude: -41.2865, longitude: 174.7762 },
+];
+
 // --- CHART CONFIGURATION ---
 const MAX_DATA_POINTS = 30;
 const CHART_WIDTH = 1000;
-const CHART_HEIGHT = 300; // Tighter height
+const CHART_HEIGHT = 280;
 const POLLING_INTERVAL = 2500;
 
-type SystemData = { latency: number; status: string; timestamp: Date };
+type SystemStatus = 'NOMINAL' | 'DEGRADED' | 'OFFLINE' | 'UNAVAILABLE' | 'CHECKING';
+type SystemData = { latency: number; status: SystemStatus; timestamp: Date };
+
+function isMeasuredSystemStatus(
+  value: unknown,
+): value is Extract<SystemStatus, 'NOMINAL' | 'DEGRADED' | 'OFFLINE'> {
+  return value === 'NOMINAL' || value === 'DEGRADED' || value === 'OFFLINE';
+}
 
 export default function PremiumLanding() {
   const [history, setHistory] = useState<SystemData[]>(() => {
-    let currentLat = 40;
-    return Array.from({ length: MAX_DATA_POINTS }).map((_, i) => {
-      currentLat += (Math.random() - 0.5) * 18;
-      if (currentLat < 5) currentLat = 5;
-      return {
-        latency: currentLat,
-        status: 'NOMINAL',
-        timestamp: new Date(Date.now() - (MAX_DATA_POINTS - i) * POLLING_INTERVAL)
-      };
-    });
+    return Array.from({ length: MAX_DATA_POINTS }, (_, i) => ({
+      latency: 0,
+      status: 'CHECKING' as const,
+      timestamp: new Date(Date.now() - (MAX_DATA_POINTS - i) * POLLING_INTERVAL),
+    }));
   });
 
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -79,23 +115,41 @@ export default function PremiumLanding() {
           observer.unobserve(entry.target);
         }
       });
-    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+    }, { rootMargin: '0px 0px -5% 0px', threshold: 0.1 });
 
     elements.forEach((element) => observer.observe(element));
 
     const fetchStatus = async () => {
-      let newData: SystemData;
       try {
         const res = await fetch('/api/status');
-        if (!res.ok) throw new Error('API Offline');
-        const data = await res.json();
-        newData = { latency: data.latency, status: data.status, timestamp: new Date() };
+        if (!res.ok) throw new Error(`Status check failed (${res.status})`);
+        const data: unknown = await res.json();
+        if (
+          typeof data !== 'object' ||
+          data === null ||
+          !('latency' in data) ||
+          typeof data.latency !== 'number' ||
+          !Number.isFinite(data.latency) ||
+          !('status' in data) ||
+          !isMeasuredSystemStatus(data.status)
+        ) {
+          throw new Error('Status check returned an invalid response');
+        }
+        appendHistory({ latency: data.latency, status: data.status, timestamp: new Date() });
       } catch {
-        const lastLatency = history[history.length - 1]?.latency || 40;
-        const trend = (Math.random() - 0.5) * 22;
-        newData = { latency: Math.max(8, lastLatency + trend), status: 'NOMINAL', timestamp: new Date() };
+        setHistory((prev) => {
+          const newHistory = [...prev, {
+            latency: prev[prev.length - 1]?.latency ?? 0,
+            status: 'UNAVAILABLE' as const,
+            timestamp: new Date(),
+          }];
+          if (newHistory.length > MAX_DATA_POINTS) newHistory.shift();
+          return newHistory;
+        });
       }
+    };
 
+    const appendHistory = (newData: SystemData) => {
       setHistory(prev => {
         const newHistory = [...prev, newData];
         if (newHistory.length > MAX_DATA_POINTS) newHistory.shift();
@@ -103,12 +157,13 @@ export default function PremiumLanding() {
       });
     };
 
+    void fetchStatus();
     const interval = setInterval(fetchStatus, POLLING_INTERVAL);
     return () => {
       observer.disconnect();
       clearInterval(interval);
     };
-  }, [history]);
+  }, []);
 
   const currentData = history[history.length - 1];
   const isHealthy = currentData?.status === 'NOMINAL';
@@ -130,7 +185,6 @@ export default function PremiumLanding() {
     return { x, y };
   });
 
-  // --- SMOOTH BEZIER CURVE GENERATOR ---
   const generateSmoothPath = (pts: {x: number, y: number}[]) => {
     if (pts.length === 0) return '';
     let path = `M ${pts[0].x},${pts[0].y}`;
@@ -140,7 +194,7 @@ export default function PremiumLanding() {
       const p2 = pts[i + 1];
       const p3 = pts[i + 2 >= pts.length ? i + 1 : i + 2];
       
-      const tension = 0.2; // Adjust for smoother/tighter curves
+      const tension = 0.2; 
       const cp1x = p1.x + (p2.x - p0.x) * tension;
       const cp1y = p1.y + (p2.y - p0.y) * tension;
       const cp2x = p2.x - (p3.x - p1.x) * tension;
@@ -196,8 +250,8 @@ export default function PremiumLanding() {
              
              <div className="chart-header">
                 <div>
-                  <div className="chart-title mono-accent">EDGE LATENCY</div>
-                  <div className="chart-subtitle">Global Routing Network</div>
+                  <div className="chart-title mono-accent">ORIGINS SYSTEM LATENCY</div>
+                  <div className="chart-subtitle">Portal · Careers</div>
                 </div>
                 <div className="chart-live-value" style={{ color: themeColor }}>
                   {currentData?.latency.toFixed(1)} <span className="ms-text">ms</span>
@@ -217,13 +271,11 @@ export default function PremiumLanding() {
                     </filter>
                   </defs>
                   
-                  {/* Subtle Radar/Grid Lines */}
                   <g className="chart-grid">
                     <line x1="0" y1={points[0]?.y || 0} x2="100%" y2={points[0]?.y || 0} opacity="0.5"/>
                     <line x1="0" y1={CHART_HEIGHT / 2} x2="100%" y2={CHART_HEIGHT / 2} opacity="0.2"/>
                   </g>
 
-                  {/* Smooth Bezier Crypto Area & Line */}
                   <path d={smoothAreaPath} fill="url(#chartGradient)" className="chart-area-path" />
                   <path d={smoothLinePath} fill="none" stroke={themeColor} strokeWidth="3" filter="url(#glow)" className="chart-line-path" />
 
@@ -237,7 +289,6 @@ export default function PremiumLanding() {
                   )}
                 </svg>
 
-                {/* TradingView Price Tag */}
                 <div className="crypto-price-tag mono-accent" style={{ top: `${(latestCoord?.y / CHART_HEIGHT) * 100}%`, backgroundColor: themeColor }}>
                   <span className="pulse-dot"></span>{currentData?.latency.toFixed(1)}
                 </div>
@@ -252,7 +303,7 @@ export default function PremiumLanding() {
              </div>
              
              <div className="widget-footer sleek-coord">
-               <span>SYS.001</span>
+               <span>PORTAL · CAREERS</span>
                <span>STATUS: <span style={{ color: themeColor }}>{currentData?.status}</span></span>
              </div>
           </div>
@@ -264,42 +315,58 @@ export default function PremiumLanding() {
         <div className="ecosystem-inner shell">
           <p className="mono-accent text-center ecosystem-title">INTEGRATED WITH MODERN PRIMITIVES</p>
           <div className="ecosystem-logos">
-            {/* Vercel */}
-            <div className="partner-logo">
-              <svg width="24" height="24" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="currentColor"/></svg>
-              <span>Vercel</span>
-            </div>
-            {/* Supabase */}
-            <div className="partner-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 14h-9L12 6l4.5 10z" fill="#3ECF8E"/></svg>
-              <span>Supabase</span>
-            </div>
-            {/* Gemini */}
-            <div className="partner-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C12 8 20 12 24 12C20 12 12 16 12 24C12 16 4 12 0 12C4 12 12 8 12 0Z" fill="#8AB4F8"/></svg>
-              <span>Gemini</span>
-            </div>
-            {/* Claude */}
-            <div className="partner-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4C11 2.895 11.895 2 13 2H17.5C18.88 2 20 3.12 20 4.5V9C20 10.105 19.105 11 18 11H13.5V14.5H20V19.5C20 20.88 18.88 22 17.5 22H6.5C5.12 22 4 20.88 4 19.5V4.5C4 3.12 5.12 2 6.5 2H11V4ZM6 19.5C6 19.776 6.224 20 6.5 20H17.5C17.776 20 18 19.776 18 19.5V16.5H11.5V9H18V4.5C18 4.224 17.776 4 17.5 4H13V6H6V19.5Z" fill="#D97757"/></svg>
-              <span>Claude</span>
-            </div>
-            {/* Copilot */}
-            <div className="partner-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z" fill="currentColor"/></svg>
-              <span>Copilot</span>
-            </div>
-            {/* Microsoft */}
-            <div className="partner-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/></svg>
-              <span>Microsoft</span>
-            </div>
+            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 76 65" fill="none"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="currentColor"/></svg><span>Vercel</span></div>
+            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 14h-9L12 6l4.5 10z" fill="#3ECF8E"/></svg><span>Supabase</span></div>
+            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 0C12 8 20 12 24 12C20 12 12 16 12 24C12 16 4 12 0 12C4 12 12 8 12 0Z" fill="#8AB4F8"/></svg><span>Gemini</span></div>
+            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M11 4C11 2.895 11.895 2 13 2H17.5C18.88 2 20 3.12 20 4.5V9C20 10.105 19.105 11 18 11H13.5V14.5H20V19.5C20 20.88 18.88 22 17.5 22H6.5C5.12 22 4 20.88 4 19.5V4.5C4 3.12 5.12 2 6.5 2H11V4ZM6 19.5C6 19.776 6.224 20 6.5 20H17.5C17.776 20 18 19.776 18 19.5V16.5H11.5V9H18V4.5C18 4.224 17.776 4 17.5 4H13V6H6V19.5Z" fill="#D97757"/></svg><span>Claude</span></div>
+            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z" fill="currentColor"/></svg><span>Copilot</span></div>
+            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/></svg><span>Microsoft</span></div>
+          </div>
+        </div>
+      </section>
+
+      {/* --- GLOBAL MARKETS (WORLD MAP) --- */}
+      <section className="markets-section shell tight-section" id="markets">
+        <div className="section-heading split-heading align-top" data-reveal>
+          <div className="heading-left">
+            <div className="eyebrow mono-accent">Global Reach</div>
+            <h2 className="premium-h2">Supported<br /><em className="italic-accent">Markets.</em></h2>
+          </div>
+          <p className="heading-right-text">We operate and deploy infrastructure seamlessly across key strategic regions, ensuring low-latency delivery and localized engineering compliance.</p>
+        </div>
+
+        <div className="map-wrapper" data-reveal data-delay="100">
+          <div className="map-canvas">
+            <Image
+              src="/world.svg"
+              alt="Map showing Origins' supported markets"
+              width={1010}
+              height={666}
+              className="world-map-svg"
+              priority
+            />
+            {supportedMarkets.map(({ label, latitude, longitude, labelPosition }) => {
+              const left = ((longitude - mapBounds.west) / (mapBounds.east - mapBounds.west)) * 100;
+              const top = ((mapNorth - mercatorY(latitude)) / (mapNorth - mapSouth)) * 100;
+
+              return (
+                <div
+                  className="map-node"
+                  key={label}
+                  style={{ top: `${top}%`, left: `${left}%` }}
+                >
+                  <div className="node-ring"></div>
+                  <div className="node-core"></div>
+                  <span className={`node-label mono-accent ${labelPosition ? `node-label-${labelPosition}` : ''}`}>{label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* --- CAPABILITIES --- */}
-      <section className="section capabilities-section shell ultra-clean" id="capabilities">
+      <section className="section capabilities-section shell tight-section" id="capabilities">
         <div className="section-heading split-heading align-top" data-reveal>
           <div className="heading-left">
             <div className="eyebrow mono-accent">Capabilities</div>
@@ -320,13 +387,7 @@ export default function PremiumLanding() {
               </div>
               <div className="row-right">
                 <div className="capability-scope mono-tag">{item.scope}</div>
-                <Link
-                  className="row-link arrow-hover"
-                  href="/services"
-                  aria-label={`Learn about ${item.title}`}
-                >
-                  <span>↗</span>
-                </Link>
+                <Link className="row-link arrow-hover" aria-label={`Learn about ${item.title}`} href="/services"><span>↗</span></Link>
               </div>
             </article>
           ))}
@@ -334,43 +395,41 @@ export default function PremiumLanding() {
       </section>
 
       {/* --- WORK SECTION --- */}
-      <section className="work-section bento-section" id="work">
-        <div className="shell">
-          <div className="section-heading split-heading work-heading" data-reveal>
-            <div>
-              <div className="eyebrow mono-accent">The work</div>
-              <h2 className="premium-h2">Problems first.<br /><em className="italic-accent">Technology second.</em></h2>
-            </div>
-            <div className="work-heading-aside">
-              <p>Good engineering starts with the job the system needs to do. These are representative problem areas across product, platform and automation work.</p>
-              <Link className="text-link premium-text-link" href="/work">Explore our approach <span className="icon-smooth">↗</span></Link>
-            </div>
+      <section className="work-section bento-section shell tight-section" id="work">
+        <div className="section-heading split-heading work-heading" data-reveal>
+          <div>
+            <div className="eyebrow mono-accent">The work</div>
+            <h2 className="premium-h2">Problems first.<br /><em className="italic-accent">Technology second.</em></h2>
           </div>
+          <div className="work-heading-aside">
+            <p>Good engineering starts with the job the system needs to do. These are representative problem areas across product, platform and automation work.</p>
+            <Link className="text-link premium-text-link" href="/work">Explore our approach <span className="icon-smooth">↗</span></Link>
+          </div>
+        </div>
 
-          <div className="project-list bento-grid">
-            {projectTypes.map((project, i) => (
-              <article className="project-row bento-card" key={project.number} data-reveal data-delay={i * 100}>
-                <div className="card-top">
-                  <div className="project-number mono-accent">{project.number}</div>
-                  <div className="eyebrow project-sector mono-tag">{project.sector}</div>
-                </div>
-                <div className="project-content">
-                  <h3 className="card-title">{project.title}</h3>
-                  <p className="card-text">{project.text}</p>
-                </div>
-                <div className="card-bottom">
-                  <div className="project-disciplines">{project.disciplines}</div>
-                  <div className="project-symbol bento-arrow" aria-hidden="true">↗</div>
-                </div>
-              </article>
-            ))}
-          </div>
+        <div className="project-list bento-grid">
+          {projectTypes.map((project, i) => (
+            <article className="project-row bento-card" key={project.number} data-reveal data-delay={i * 100}>
+              <div className="card-top">
+                <div className="project-number mono-accent">{project.number}</div>
+                <div className="eyebrow project-sector mono-tag">{project.sector}</div>
+              </div>
+              <div className="project-content">
+                <h3 className="card-title">{project.title}</h3>
+                <p className="card-text">{project.text}</p>
+              </div>
+              <div className="card-bottom">
+                <div className="project-disciplines">{project.disciplines}</div>
+                <div className="project-symbol bento-arrow" aria-hidden="true">↗</div>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
       {/* --- METHOD --- */}
-      <section className="method-section timeline-section" id="approach">
-        <div className="shell method-layout method-split">
+      <section className="method-section timeline-section shell tight-section" id="approach">
+        <div className="method-layout method-split">
           <div className="method-intro sticky-side" data-reveal>
             <div className="eyebrow mono-accent">A considered process</div>
             <h2 className="premium-h2">Less uncertainty.<br /><em className="italic-accent">Better decisions.</em></h2>
@@ -393,7 +452,7 @@ export default function PremiumLanding() {
       </section>
 
       {/* --- PRINCIPLES --- */}
-      <section className="principles-section shell clean-grid" id="about">
+      <section className="principles-section shell clean-grid tight-section" id="about">
         <div className="section-heading centered-heading" data-reveal>
           <div className="eyebrow mono-accent">The Origins standard</div>
           <h2 className="premium-h2">Trust is earned in<br /><em className="italic-accent">the details.</em></h2>
@@ -438,7 +497,7 @@ export default function PremiumLanding() {
       <style dangerouslySetInnerHTML={{ __html: `
         :root {
           --premium-ease: cubic-bezier(0.16, 1, 0.3, 1);
-          --surface-bg: #030303;
+          --surface-bg: #050505;
           --surface-border: rgba(255, 255, 255, 0.08);
           --text-primary: #ffffff;
           --text-secondary: #888888;
@@ -446,23 +505,27 @@ export default function PremiumLanding() {
 
         .premium-override { background-color: var(--surface-bg); color: var(--text-primary); overflow-x: hidden; }
 
-        .reveal-pending { opacity: 0; transform: translateY(30px); }
-        .is-visible { opacity: 1; transform: translateY(0); transition: opacity 1s var(--premium-ease), transform 1s var(--premium-ease); will-change: opacity, transform; }
+        .reveal-pending { opacity: 0; transform: translateY(20px); }
+        .is-visible { opacity: 1; transform: translateY(0); transition: opacity 0.8s var(--premium-ease), transform 0.8s var(--premium-ease); will-change: opacity, transform; }
+
+        /* TIGHTER OVERALL SPACING */
+        .tight-section { padding: 4rem 0; }
+        .split-heading { margin-bottom: 2rem; }
 
         .massive-title { font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1.05; letter-spacing: -0.03em; font-weight: 400; margin-bottom: 1.5rem; }
         .premium-h2 { font-size: clamp(2rem, 3.5vw, 3.5rem); line-height: 1.1; letter-spacing: -0.02em; font-weight: 400; }
         .italic-accent { font-style: italic; color: var(--text-secondary); font-weight: 300; }
         .mono-accent { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); }
 
-        /* TIGHTER HERO LAYOUT */
-        .premium-hero { position: relative; padding-top: 10vh; padding-bottom: 3rem; display: flex; align-items: center; }
-        .compact-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+        /* HERO LAYOUT */
+        .premium-hero { position: relative; padding-top: 10vh; padding-bottom: 2rem; display: flex; align-items: center; }
+        .compact-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
         .hero-noise { position: absolute; inset: 0; opacity: 0.03; pointer-events: none; background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E'); }
 
-        /* PREMIUM FROSTED CHART WIDGET */
+        /* FROSTED CHART WIDGET */
         .premium-chart-widget {
-          position: relative; width: 100%; height: 380px; 
-          border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+          position: relative; width: 100%; height: 340px; 
+          border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
           background: linear-gradient(180deg, rgba(20,20,20,0.6) 0%, rgba(0,0,0,0.8) 100%);
           backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.5);
           display: flex; flex-direction: column; overflow: hidden;
@@ -470,113 +533,169 @@ export default function PremiumLanding() {
         
         .arch-glow { position: absolute; width: 100%; height: 100%; top: 0; left: 0; filter: blur(60px); transition: background 1s ease; pointer-events: none; opacity: 0.4; mix-blend-mode: screen; }
 
-        .chart-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.5rem; position: relative; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .chart-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.25rem 1.5rem; position: relative; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .chart-title { color: #fff; font-weight: 500; }
-        .chart-subtitle { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
-        .chart-live-value { font-family: monospace; font-size: 2.5rem; line-height: 1; font-weight: 300; transition: color 0.5s ease; text-shadow: 0 0 20px currentColor; }
-        .ms-text { font-size: 1rem; color: var(--text-secondary); }
+        .chart-subtitle { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+        .chart-live-value { font-family: monospace; font-size: 2.2rem; line-height: 1; font-weight: 300; transition: color 0.5s ease; text-shadow: 0 0 20px currentColor; }
+        .ms-text { font-size: 0.9rem; color: var(--text-secondary); }
 
-        .chart-container { position: absolute; inset: 0; top: 85px; bottom: 45px; cursor: crosshair; z-index: 5; }
+        .chart-container { position: absolute; inset: 0; top: 80px; bottom: 40px; cursor: crosshair; z-index: 5; }
         .chart-svg { width: 100%; height: 100%; display: block; overflow: visible; }
         
         .chart-grid line { stroke: rgba(255,255,255,0.08); stroke-width: 1; stroke-dasharray: 2 4; transition: y1 2.5s linear, y2 2.5s linear; }
         .chart-area-path, .chart-line-path, .leading-dot { transition: all 2.5s linear; }
 
         .crypto-price-tag {
-          position: absolute; right: 0; transform: translateY(-50%); padding: 4px 10px; color: #000; font-weight: bold; border-radius: 4px 0 0 4px;
+          position: absolute; right: 0; transform: translateY(-50%); padding: 3px 8px; color: #000; font-weight: bold; border-radius: 4px 0 0 4px;
           display: flex; align-items: center; gap: 6px; box-shadow: -4px 0 15px rgba(0,0,0,0.5); transition: top 2.5s linear, background-color 0.5s ease; pointer-events: none;
         }
         .pulse-dot { width: 6px; height: 6px; background: rgba(0,0,0,0.6); border-radius: 50%; animation: pulse 1s infinite alternate; }
         @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 1; } }
 
-        .chart-tooltip {
-          position: absolute; transform: translateX(-50%); background: rgba(0,0,0,0.9);
-          border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 8px; pointer-events: none;
-          text-align: center; white-space: nowrap; box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 20;
-        }
-
+        .chart-tooltip { position: absolute; transform: translateX(-50%); background: rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 8px; pointer-events: none; text-align: center; white-space: nowrap; box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 20; }
         .widget-footer { position: absolute; bottom: 0; width: 100%; display: flex; justify-content: space-between; padding: 0.75rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.7rem; color: var(--text-secondary); background: rgba(0,0,0,0.2); }
 
-        /* PREMIUM ECOSYSTEM STRIP */
-        .ecosystem-section { padding: 4rem 0 2rem; border-bottom: 1px solid var(--surface-border); }
-        .ecosystem-title { margin-bottom: 2rem; opacity: 0.5; font-size: 0.7rem; }
+        /* ECOSYSTEM STRIP */
+        .ecosystem-section { padding: 3rem 0; border-bottom: 1px solid var(--surface-border); margin-bottom: 2rem; }
+        .ecosystem-title { margin-bottom: 1.5rem; opacity: 0.5; font-size: 0.7rem; }
         .ecosystem-logos { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem; padding: 0 2rem; opacity: 0.7; }
-        .partner-logo { display: flex; align-items: center; gap: 0.75rem; font-weight: 500; font-size: 0.95rem; filter: grayscale(100%); transition: filter 0.3s ease, opacity 0.3s ease; opacity: 0.6; }
+        .partner-logo { display: flex; align-items: center; gap: 0.75rem; font-weight: 500; font-size: 0.95rem; filter: grayscale(100%); transition: filter 0.3s ease, opacity 0.3s ease; opacity: 0.5; }
         .partner-logo:hover { filter: grayscale(0%); opacity: 1; }
         .partner-logo svg { flex-shrink: 0; }
 
+        /* --- GLOBAL MAP WIDGET --- */
+        .map-wrapper { 
+          position: relative; width: 100%; height: 500px; margin-top: 2.5rem;
+          border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;
+          background: #000;
+          overflow: hidden; display: flex; justify-content: center; align-items: center;
+        }
+        .map-canvas { position: relative; flex: none; width: min(100%, 757px); aspect-ratio: 1009.6727 / 665.96301; }
+        .world-map-svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; filter: brightness(0) invert(1); opacity: 0.35; }
+        
+        .map-node { position: absolute; z-index: 10; width: 0; height: 0; }
+        
+        /* The glowing lime dot */
+        .node-core { 
+          width: 5px; height: 5px; 
+          background: #c8ff00; 
+          border-radius: 50%; 
+          box-shadow: 0 0 10px #c8ff00; 
+          position: absolute; 
+          top: 0;
+          left: 0;
+          transform: translate(-50%, -50%);
+          z-index: 2; 
+        }
+
+        /* The offset hollow ring matching the screenshot perfectly */
+        .node-ring { 
+          position: absolute; 
+          width: 22px; height: 22px; 
+          border: 1.5px solid #c8ff00; 
+          border-radius: 50%; 
+          top: 0;
+          left: 0;
+          transform: translate(-50%, -50%);
+          opacity: 0.7; 
+        }
+        
+        /* The dark terminal labels */
+        .node-label { 
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          font-size: 0.65rem; 
+          font-weight: 600; 
+          color: #fff; 
+          background: rgba(0,0,0,0.8); 
+          padding: 4px 8px; 
+          border-radius: 4px; 
+          border: 1px solid rgba(255,255,255,0.15); 
+          white-space: nowrap; 
+          letter-spacing: 0.05em;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+          transition: border-color 0.3s;
+        }
+        .node-label-above { top: auto; bottom: 10px; }
+        .node-label-left { top: 50%; right: 10px; left: auto; transform: translateY(-50%); }
+        .node-label-right { top: 50%; left: 10px; transform: translateY(-50%); }
+        .map-node:hover .node-label { border-color: rgba(200,255,0,0.4); }
+
         /* BUTTONS & LINKS */
-        .premium-btn { background: #ffffff; color: #000000; border-radius: 99px; padding: 1rem 2rem; font-weight: 500; transition: transform 0.4s var(--premium-ease), box-shadow 0.4s var(--premium-ease); }
-        .premium-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(255,255,255,0.1); }
-        .premium-btn-ghost { border: 1px solid var(--surface-border); border-radius: 99px; padding: 1rem 2rem; transition: background 0.4s var(--premium-ease); }
+        .premium-btn { background: #ffffff; color: #000000; border-radius: 99px; padding: 0.85rem 1.75rem; font-weight: 500; transition: transform 0.4s var(--premium-ease), box-shadow 0.4s var(--premium-ease); font-size: 0.95rem; }
+        .premium-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,255,255,0.1); }
+        .premium-btn-ghost { border: 1px solid var(--surface-border); border-radius: 99px; padding: 0.85rem 1.75rem; transition: background 0.4s var(--premium-ease); font-size: 0.95rem; }
         .premium-btn-ghost:hover { background: rgba(255,255,255,0.05); }
         .icon-smooth { display: inline-block; transition: transform 0.4s var(--premium-ease); }
         .premium-btn:hover .icon-smooth, .premium-btn-ghost:hover .icon-smooth, .premium-text-link:hover .icon-smooth { transform: translate(3px, -3px); }
 
-        /* TIGHTER BENTO GRIDS & SECTIONS */
-        .capabilities-section { padding-top: 6rem; }
-        .bento-section { padding: 5rem 0; }
-        .bento-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3rem; }
-        .bento-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--surface-border); padding: 2rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 320px; transition: transform 0.4s var(--premium-ease), background 0.4s var(--premium-ease); border-radius: 8px; }
+        /* BENTO GRIDS (Tightened) */
+        .bento-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 2rem; }
+        .bento-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--surface-border); padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px; transition: transform 0.4s var(--premium-ease), background 0.4s var(--premium-ease); border-radius: 8px; }
         .bento-card:hover { background: rgba(255, 255, 255, 0.04); transform: translateY(-3px); }
         
-        .card-top { display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
-        .card-title { font-size: 1.3rem; font-weight: 400; margin-bottom: 0.75rem; }
-        .card-text { color: var(--text-secondary); line-height: 1.5; font-size: 0.95rem; }
-        .card-bottom { margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--surface-border); padding-top: 1rem; }
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+        .card-title { font-size: 1.25rem; font-weight: 400; margin-bottom: 0.5rem; }
+        .card-text { color: var(--text-secondary); line-height: 1.5; font-size: 0.9rem; }
+        .card-bottom { margin-top: 1rem; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--surface-border); padding-top: 1rem; }
         .bento-arrow { font-size: 1.2rem; color: var(--text-secondary); transition: transform 0.3s; }
         .bento-card:hover .bento-arrow { transform: translate(3px, -3px); color: #fff; }
 
-        .bento-grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 3rem; }
-        .subtle-card { min-height: 200px; }
+        .bento-grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 2rem; }
+        .subtle-card { min-height: 180px; }
         .tech-line { height: 1px; background: var(--surface-border); flex-grow: 1; margin-left: 1rem; }
-        .card-header { display: flex; align-items: center; margin-bottom: 1.5rem; }
+        .card-header { display: flex; align-items: center; margin-bottom: 1rem; }
 
-        /* ROW ACCORDION */
-        .sleek-accordion { display: flex; flex-direction: column; margin-top: 3rem; }
-        .premium-row { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 2rem; padding: 2rem 0; border-bottom: 1px solid var(--surface-border); align-items: center; transition: background 0.3s ease, padding 0.3s ease; }
+        /* ROW ACCORDION (Tightened) */
+        .sleek-accordion { display: flex; flex-direction: column; margin-top: 2rem; }
+        .premium-row { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 1.5rem; padding: 1.75rem 0; border-bottom: 1px solid var(--surface-border); align-items: center; transition: background 0.3s ease, padding 0.3s ease; }
         .premium-row:first-child { border-top: 1px solid var(--surface-border); }
         .premium-row:hover { background: rgba(255,255,255,0.015); padding-left: 1rem; padding-right: 1rem; }
         .row-left { display: flex; gap: 1.5rem; align-items: baseline; }
-        .row-title { font-size: 1.3rem; font-weight: 400; }
-        .row-text { color: var(--text-secondary); font-size: 1rem; max-width: 500px; line-height: 1.5; }
+        .row-title { font-size: 1.25rem; font-weight: 400; }
+        .row-text { color: var(--text-secondary); font-size: 0.95rem; max-width: 500px; line-height: 1.5; }
         .row-right { display: flex; justify-content: space-between; align-items: center; }
         .mono-tag { font-family: monospace; font-size: 0.65rem; padding: 0.3rem 0.6rem; border: 1px solid var(--surface-border); border-radius: 4px; color: var(--text-secondary); }
 
-        /* TIMELINE */
-        .method-split { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; position: relative; padding-top: 5rem; }
+        /* TIMELINE (Tightened) */
+        .method-split { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; position: relative; }
         .sticky-side { position: sticky; top: 15vh; height: fit-content; }
-        .timeline-list { position: relative; border-left: 1px solid var(--surface-border); padding-left: 2.5rem; }
-        .timeline-step { position: relative; margin-bottom: 4rem; }
-        .timeline-node { position: absolute; left: -2.5rem; top: 0; width: 9px; height: 9px; background: var(--surface-bg); border: 1px solid #fff; border-radius: 50%; transform: translateX(-50%); }
-        .massive-number { font-size: 3rem; font-weight: 300; line-height: 1; color: rgba(255,255,255,0.05); display: block; margin-bottom: 0.5rem; }
-        .timeline-title { font-size: 1.5rem; margin-bottom: 0.5rem; }
-        .timeline-text { color: var(--text-secondary); line-height: 1.6; font-size: 1rem; }
+        .timeline-list { position: relative; border-left: 1px solid var(--surface-border); padding-left: 2rem; margin-top: 1rem; }
+        .timeline-step { position: relative; margin-bottom: 3rem; }
+        .timeline-step:last-child { margin-bottom: 0; }
+        .timeline-node { position: absolute; left: -2rem; top: 0; width: 9px; height: 9px; background: var(--surface-bg); border: 1px solid #fff; border-radius: 50%; transform: translateX(-50%); }
+        .massive-number { font-size: 2.5rem; font-weight: 300; line-height: 1; color: rgba(255,255,255,0.05); display: block; margin-bottom: 0.5rem; }
+        .timeline-title { font-size: 1.25rem; margin-bottom: 0.5rem; }
+        .timeline-text { color: var(--text-secondary); line-height: 1.5; font-size: 0.95rem; }
 
         /* BRUTALIST CTA */
-        .brutalist-cta { padding: 8rem 0; position: relative; overflow: hidden; }
+        .brutalist-cta { padding: 6rem 0; position: relative; overflow: hidden; }
         .cta-grid-bg { position: absolute; inset: 0; background-image: linear-gradient(var(--surface-border) 1px, transparent 1px), linear-gradient(90deg, var(--surface-border) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.2; mask-image: radial-gradient(circle at center, black, transparent 70%); }
         .cta-content-wrapper { position: relative; z-index: 1; text-align: center; max-width: 800px; margin: 0 auto; }
-        .cta-p { font-size: 1.1rem; color: var(--text-secondary); margin: 1.5rem auto 2.5rem; max-width: 600px; line-height: 1.5; }
+        .cta-p { font-size: 1.05rem; color: var(--text-secondary); margin: 1.25rem auto 2rem; max-width: 600px; line-height: 1.5; }
         .cta-actions { justify-content: center; }
-        .cta-footer-metrics { display: flex; justify-content: space-between; border-top: 1px solid var(--surface-border); margin-top: 5rem; padding-top: 1.5rem; position: relative; z-index: 1; }
+        .cta-footer-metrics { display: flex; justify-content: space-between; border-top: 1px solid var(--surface-border); margin-top: 4rem; padding-top: 1.5rem; position: relative; z-index: 1; }
 
         /* RESPONSIVE */
         @media (max-width: 1024px) {
           .compact-hero { grid-template-columns: 1fr; gap: 3rem; }
-          .premium-row { grid-template-columns: 1fr; gap: 1rem; }
+          .premium-row { grid-template-columns: 1fr; gap: 1rem; padding: 1.5rem 0; }
           .row-left { display: flex; flex-direction: column; gap: 0.25rem; }
           .bento-grid, .bento-grid-2x2 { grid-template-columns: 1fr 1fr; }
           .method-split { grid-template-columns: 1fr; }
-          .sticky-side { position: static; margin-bottom: 3rem; }
+          .sticky-side { position: static; margin-bottom: 2rem; }
           .ecosystem-logos { justify-content: center; }
         }
         @media (max-width: 768px) {
-          .premium-chart-widget { height: 320px; }
+          .premium-chart-widget { height: 280px; }
+          .map-wrapper { height: 350px; }
+          .map-canvas { max-width: 530px; }
           .bento-grid, .bento-grid-2x2 { grid-template-columns: 1fr; }
           .timeline-list { padding-left: 1.5rem; }
           .timeline-node { left: -1.5rem; }
           .crypto-price-tag { display: none; }
+          .node-label { display: none; /* Keep mobile clean */ }
         }
       `}} />
     </main>
