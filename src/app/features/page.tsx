@@ -1,14 +1,18 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import Link from '@/app/components/LocaleLink';
 import PageShell from '@/app/components/PageShell';
 import PageHero from '@/app/components/PageHero';
+import LocalizedText from '@/app/components/LocalizedText';
+import { localizeMetadata } from '@/app/metadata';
 
-export const metadata: Metadata = {
-  title: 'Engineering Standards',
-  description: 'Explore the engineering principles Origins Software brings to security, reliability, accessibility, delivery automation, AI oversight and operational handover.',
-  openGraph: { title: 'Engineering Standards | Origins Software', description: 'The practical principles behind dependable software delivery.' },
-  alternates: { canonical: '/features' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return localizeMetadata(
+    'Engineering Standards',
+    'Explore the engineering principles Origins Software brings to security, reliability, accessibility, delivery automation, AI oversight and operational handover.',
+    'Engineering Standards | Origins Software',
+    'The practical principles behind dependable software delivery.',
+  );
+}
 
 const standards = [
   { number: '01', title: 'Secure by design', text: 'Treat identity, permissions, data handling, dependency risk and threat modelling as design inputs—not as last-minute checklist items.', detail: 'Security engineering', href: '/services/proactive-cybersecurity' },
@@ -23,15 +27,15 @@ export default function FeaturesPage() {
   return <PageShell>
     <PageHero eyebrow="Engineering standards" title="Built to work in the real world—not only in a demo." description="Good software is more than a polished interface. It needs sound foundations, visible behaviour, thoughtful risk management and a clear path to being operated and improved." cta="Discuss your requirements" />
     <section className="content-section standards-intro">
-      <div className="section-kicker">Principles in practice</div>
-      <p>These are practical engineering principles to guide scope and implementation. The exact controls, tests and operational commitments are agreed to fit each project's risk profile and environment.</p>
+      <div className="section-kicker"><LocalizedText text="Principles in practice" /></div>
+      <p><LocalizedText text="These are practical engineering principles to guide scope and implementation. The exact controls, tests and operational commitments are agreed to fit each project's risk profile and environment." /></p>
     </section>
     <section className="content-section standards-list" aria-label="Engineering standards">
       {standards.map((item) => <article className="standard-row" key={item.number} data-motion>
         <span className="standard-number">{item.number}</span>
-        <div className="standard-main"><h2>{item.title}</h2><p>{item.text}</p><Link href={item.href} className="text-link">Explore {item.detail} <span aria-hidden="true">↗</span></Link></div>
+        <div className="standard-main"><h2><LocalizedText text={item.title} /></h2><p><LocalizedText text={item.text} /></p><Link href={item.href} className="text-link"><LocalizedText text={`Explore ${item.detail}`} /> <span aria-hidden="true">↗</span></Link></div>
       </article>)}
     </section>
-    <section className="content-section two-col"><div><div className="section-kicker">Project assurance</div><h2>Define what “ready” means before release.</h2></div><div className="prose"><p>Acceptance criteria, test coverage, access boundaries, recovery expectations and ownership should be explicit enough for a team to make a release decision with confidence. We adapt this checklist to the system being built.</p><Link className="button-secondary" href="/process">See the delivery process <span aria-hidden="true">↗</span></Link></div></section>
+    <section className="content-section two-col"><div><div className="section-kicker"><LocalizedText text="Project assurance" /></div><h2><LocalizedText text="Define what “ready” means before release." /></h2></div><div className="prose"><p><LocalizedText text="Acceptance criteria, test coverage, access boundaries, recovery expectations and ownership should be explicit enough for a team to make a release decision with confidence. We adapt this checklist to the system being built." /></p><Link className="button-secondary" href="/process"><LocalizedText text="See the delivery process" /> <span aria-hidden="true">↗</span></Link></div></section>
   </PageShell>;
 }

@@ -1,8 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
-import { useEffect, useState, useRef, MouseEvent } from 'react';
+import Link from '@/app/components/LocaleLink';
+import { translate } from '@/app/i18n';
+import { useLocale } from './LocaleProvider';
+import { useEffect } from 'react';
 import SiteFooter from '@/app/components/SiteFooter';
 import SiteHeader from '@/app/components/SiteHeader';
 
@@ -68,32 +70,23 @@ const supportedMarkets = [
   { label: 'NEW ZEALAND', latitude: -41.2865, longitude: 174.7762 },
 ];
 
-// --- CHART CONFIGURATION ---
-const MAX_DATA_POINTS = 30;
-const CHART_WIDTH = 1000;
-const CHART_HEIGHT = 280;
-const POLLING_INTERVAL = 2500;
-
-type SystemStatus = 'NOMINAL' | 'DEGRADED' | 'OFFLINE' | 'UNAVAILABLE' | 'CHECKING';
-type SystemData = { latency: number; status: SystemStatus; timestamp: Date };
-
-function isMeasuredSystemStatus(
-  value: unknown,
-): value is Extract<SystemStatus, 'NOMINAL' | 'DEGRADED' | 'OFFLINE'> {
-  return value === 'NOMINAL' || value === 'DEGRADED' || value === 'OFFLINE';
-}
+const partnerGroups = [
+  { label: 'AI platforms', partners: [
+    { name: 'Gemini', icon: 'gemini' },
+    { name: 'Claude', icon: 'claude' },
+    { name: 'ChatGPT', icon: 'chatgpt' },
+    { name: 'Microsoft Copilot', icon: 'copilot' },
+  ] },
+  { label: 'Cloud & technology', partners: [
+    { name: 'Microsoft', icon: 'microsoft' },
+    { name: 'AWS', icon: 'aws' },
+    { name: 'Alibaba Cloud', icon: 'alibaba-cloud' },
+  ] },
+];
 
 export default function PremiumLanding() {
-  const [history, setHistory] = useState<SystemData[]>(() => {
-    return Array.from({ length: MAX_DATA_POINTS }, (_, i) => ({
-      latency: 0,
-      status: 'CHECKING' as const,
-      timestamp: new Date(Date.now() - (MAX_DATA_POINTS - i) * POLLING_INTERVAL),
-    }));
-  });
-
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
+  const locale = useLocale();
+  const localized = (text: string) => translate(locale, text);
 
   useEffect(() => {
     const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
@@ -118,104 +111,8 @@ export default function PremiumLanding() {
     }, { rootMargin: '0px 0px -5% 0px', threshold: 0.1 });
 
     elements.forEach((element) => observer.observe(element));
-
-    const fetchStatus = async () => {
-      try {
-        const res = await fetch('/api/status');
-        if (!res.ok) throw new Error(`Status check failed (${res.status})`);
-        const data: unknown = await res.json();
-        if (
-          typeof data !== 'object' ||
-          data === null ||
-          !('latency' in data) ||
-          typeof data.latency !== 'number' ||
-          !Number.isFinite(data.latency) ||
-          !('status' in data) ||
-          !isMeasuredSystemStatus(data.status)
-        ) {
-          throw new Error('Status check returned an invalid response');
-        }
-        appendHistory({ latency: data.latency, status: data.status, timestamp: new Date() });
-      } catch {
-        setHistory((prev) => {
-          const newHistory = [...prev, {
-            latency: prev[prev.length - 1]?.latency ?? 0,
-            status: 'UNAVAILABLE' as const,
-            timestamp: new Date(),
-          }];
-          if (newHistory.length > MAX_DATA_POINTS) newHistory.shift();
-          return newHistory;
-        });
-      }
-    };
-
-    const appendHistory = (newData: SystemData) => {
-      setHistory(prev => {
-        const newHistory = [...prev, newData];
-        if (newHistory.length > MAX_DATA_POINTS) newHistory.shift();
-        return newHistory;
-      });
-    };
-
-    void fetchStatus();
-    const interval = setInterval(fetchStatus, POLLING_INTERVAL);
-    return () => {
-      observer.disconnect();
-      clearInterval(interval);
-    };
+    return () => observer.disconnect();
   }, []);
-
-  const currentData = history[history.length - 1];
-  const isHealthy = currentData?.status === 'NOMINAL';
-  const themeColor = isHealthy ? '#c8ff00' : '#ff4444';
-  const glowColor = isHealthy ? 'rgba(200, 255, 0, 0.12)' : 'rgba(255, 68, 68, 0.12)';
-
-  const rawMax = Math.max(...history.map(d => d.latency));
-  const rawMin = Math.min(...history.map(d => d.latency));
-  const diff = rawMax - rawMin || 10;
-  
-  const maxLat = rawMax + diff * 0.15;
-  const minLat = Math.max(0, rawMin - diff * 0.15);
-  const range = maxLat - minLat || 1;
-  const padding = 15;
-
-  const points = history.map((d, i) => {
-    const x = (i / (MAX_DATA_POINTS - 1)) * CHART_WIDTH;
-    const y = CHART_HEIGHT - padding - ((d.latency - minLat) / range) * (CHART_HEIGHT - padding * 2);
-    return { x, y };
-  });
-
-  const generateSmoothPath = (pts: {x: number, y: number}[]) => {
-    if (pts.length === 0) return '';
-    let path = `M ${pts[0].x},${pts[0].y}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i === 0 ? 0 : i - 1];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[i + 2 >= pts.length ? i + 1 : i + 2];
-      
-      const tension = 0.2; 
-      const cp1x = p1.x + (p2.x - p0.x) * tension;
-      const cp1y = p1.y + (p2.y - p0.y) * tension;
-      const cp2x = p2.x - (p3.x - p1.x) * tension;
-      const cp2y = p2.y - (p3.y - p1.y) * tension;
-      
-      path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
-    }
-    return path;
-  };
-
-  const smoothLinePath = generateSmoothPath(points);
-  const smoothAreaPath = `${smoothLinePath} L ${CHART_WIDTH},${CHART_HEIGHT} L 0,${CHART_HEIGHT} Z`;
-  const latestCoord = points[points.length - 1];
-
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!chartRef.current) return;
-    const rect = chartRef.current.getBoundingClientRect();
-    const xRatio = (e.clientX - rect.left) / rect.width;
-    const index = Math.min(MAX_DATA_POINTS - 1, Math.max(0, Math.round(xRatio * (MAX_DATA_POINTS - 1))));
-    setHoverIndex(index);
-  };
 
   return (
     <main className="origins-landing premium-override" id="main-content">
@@ -226,101 +123,87 @@ export default function PremiumLanding() {
         <div className="hero-noise" aria-hidden="true" />
         <div className="hero-layout shell compact-hero">
           <div className="hero-copy">
-            <div className="eyebrow hero-eyebrow" data-reveal><span className="status-dot pulse" /> INDEPENDENT SOFTWARE ENGINEERING</div>
+            <div className="eyebrow hero-eyebrow" data-reveal><span className="status-dot pulse" /> {localized('INDEPENDENT SOFTWARE COMPANY')}</div>
             <h1 id="hero-title" className="massive-title" data-reveal data-delay="100">
-              Complex problems.<br />
-              Software built to <span className="lime-underline highlight-sweep">hold up.</span>
+              {localized('Software for')}<br />
+              {localized('the work that')} <span className="lime-underline highlight-sweep">{localized('matters.')}</span>
             </h1>
             <p className="hero-lede" data-reveal data-delay="200">
-              Origins helps ambitious teams turn difficult ideas and tangled systems into dependable digital products, infrastructure and AI-enabled workflows.
+              {localized('We design, build and run digital products, business platforms and cloud systems—bringing clear thinking and careful engineering to every stage.')}
             </p>
             <div className="hero-actions" data-reveal data-delay="300">
               <Link className="button button-primary premium-btn" href="/contact">
-                Start a conversation <span className="button-arrow icon-smooth" aria-hidden="true">↗</span>
+                {localized('Start a conversation')} <span className="button-arrow icon-smooth" aria-hidden="true">↗</span>
               </Link>
               <Link className="button button-ghost premium-btn-ghost" href="/services">
-                Explore capabilities <span className="button-arrow icon-smooth" aria-hidden="true">↘</span>
+                {localized('Explore capabilities')} <span className="button-arrow icon-smooth" aria-hidden="true">↘</span>
               </Link>
             </div>
           </div>
 
-          {/* --- PREMIUM SMOOTH CHART WIDGET --- */}
-          <div className="hero-visual premium-chart-widget" data-reveal data-delay="300">
-             <div className="arch-glow" style={{ background: glowColor }}></div>
-             
-             <div className="chart-header">
-                <div>
-                  <div className="chart-title mono-accent">ORIGINS SYSTEM LATENCY</div>
-                  <div className="chart-subtitle">Portal · Careers</div>
+          <div className="hero-visual software-showcase" data-reveal data-delay="300" aria-label={localized('Software delivery overview')}>
+            <div className="showcase-window">
+              <div className="showcase-window-bar">
+                <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
+                <span className="showcase-window-label">ORIGINS / DELIVERY SYSTEMS</span>
+                <span className="showcase-window-index">01—04</span>
+              </div>
+              <div className="showcase-content">
+                <div className="showcase-intro">
+                  <span className="showcase-kicker">{localized('From first idea to production')}</span>
+                  <span className="showcase-live"><i /> {localized('BUILT FOR THE REAL WORLD')}</span>
                 </div>
-                <div className="chart-live-value" style={{ color: themeColor }}>
-                  {currentData?.latency.toFixed(1)} <span className="ms-text">ms</span>
+                <div className="showcase-flow" aria-label={localized('Discover, design, build and operate')}>
+                  <div className="flow-step"><span>01</span><strong>{localized('Discover')}</strong><small>{localized('Understand the need')}</small></div>
+                  <div className="flow-connector" aria-hidden="true" />
+                  <div className="flow-step"><span>02</span><strong>{localized('Design')}</strong><small>{localized('Shape the system')}</small></div>
+                  <div className="flow-connector" aria-hidden="true" />
+                  <div className="flow-step flow-step-active"><span>03</span><strong>{localized('Build')}</strong><small>{localized('Ship with confidence')}</small></div>
+                  <div className="flow-connector" aria-hidden="true" />
+                  <div className="flow-step"><span>04</span><strong>{localized('Operate')}</strong><small>{localized('Improve over time')}</small></div>
                 </div>
-             </div>
-
-             <div className="chart-container" ref={chartRef} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIndex(null)}>
-                <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} preserveAspectRatio="none" className="chart-svg">
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={themeColor} stopOpacity="0.35" />
-                      <stop offset="100%" stopColor={themeColor} stopOpacity="0.0" />
-                    </linearGradient>
-                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="6" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                  </defs>
-                  
-                  <g className="chart-grid">
-                    <line x1="0" y1={points[0]?.y || 0} x2="100%" y2={points[0]?.y || 0} opacity="0.5"/>
-                    <line x1="0" y1={CHART_HEIGHT / 2} x2="100%" y2={CHART_HEIGHT / 2} opacity="0.2"/>
-                  </g>
-
-                  <path d={smoothAreaPath} fill="url(#chartGradient)" className="chart-area-path" />
-                  <path d={smoothLinePath} fill="none" stroke={themeColor} strokeWidth="3" filter="url(#glow)" className="chart-line-path" />
-
-                  <circle cx={latestCoord?.x || 0} cy={latestCoord?.y || 0} r="5" fill="#fff" className="leading-dot" style={{ filter: `drop-shadow(0 0 10px ${themeColor})` }}/>
-
-                  {hoverIndex !== null && history[hoverIndex] && (
-                    <g className="crosshair">
-                      <line x1={points[hoverIndex].x} y1="0" x2={points[hoverIndex].x} y2={CHART_HEIGHT} stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-                      <circle cx={points[hoverIndex].x} cy={points[hoverIndex].y} r="6" fill="#000" stroke={themeColor} strokeWidth="2.5" />
-                    </g>
-                  )}
-                </svg>
-
-                <div className="crypto-price-tag mono-accent" style={{ top: `${(latestCoord?.y / CHART_HEIGHT) * 100}%`, backgroundColor: themeColor }}>
-                  <span className="pulse-dot"></span>{currentData?.latency.toFixed(1)}
-                </div>
-
-                {hoverIndex !== null && history[hoverIndex] && (
-                  <div className="chart-tooltip mono-accent" style={{ left: `${(hoverIndex / (MAX_DATA_POINTS - 1)) * 100}%`, top: '10px' }}>
-                    <div style={{ color: themeColor, fontSize: '1.2rem', fontWeight: 600 }}>
-                      {history[hoverIndex].latency.toFixed(1)} <span style={{fontSize: '0.7rem'}}>ms</span>
-                    </div>
+                <div className="showcase-modules">
+                  <div className="showcase-module">
+                    <span className="module-symbol" aria-hidden="true">⌘</span>
+                    <div><strong>{localized('Digital products')}</strong><small>{localized('Web · Mobile · Platforms')}</small></div>
+                    <span className="module-arrow" aria-hidden="true">↗</span>
                   </div>
-                )}
-             </div>
-             
-             <div className="widget-footer sleek-coord">
-               <span>PORTAL · CAREERS</span>
-               <span>STATUS: <span style={{ color: themeColor }}>{currentData?.status}</span></span>
-             </div>
+                  <div className="showcase-module">
+                    <span className="module-symbol module-symbol-cloud" aria-hidden="true">◌</span>
+                    <div><strong>{localized('Cloud & intelligent systems')}</strong><small>{localized('Infrastructure · Data · AI')}</small></div>
+                    <span className="module-arrow" aria-hidden="true">↗</span>
+                  </div>
+                </div>
+                <div className="showcase-footnote">
+                  <span>{localized('ENGINEERED WITH INTENT')}</span>
+                  <span><i /> {localized('PRODUCT · PLATFORM · OPERATIONS')}</span>
+                </div>
+              </div>
+            </div>
+            <div className="showcase-orbit showcase-orbit-one" aria-hidden="true" />
+            <div className="showcase-orbit showcase-orbit-two" aria-hidden="true" />
           </div>
         </div>
       </section>
 
       {/* --- PREMIUM PARTNERSHIP / ECOSYSTEM SECTION --- */}
-      <section className="ecosystem-section" aria-label="Technology Partners" data-reveal>
+      <section className="ecosystem-section" aria-label={localized('Technology Partners')} data-reveal>
         <div className="ecosystem-inner shell">
-          <p className="mono-accent text-center ecosystem-title">INTEGRATED WITH MODERN PRIMITIVES</p>
-          <div className="ecosystem-logos">
-            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 76 65" fill="none"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="currentColor"/></svg><span>Vercel</span></div>
-            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 14h-9L12 6l4.5 10z" fill="#3ECF8E"/></svg><span>Supabase</span></div>
-            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 0C12 8 20 12 24 12C20 12 12 16 12 24C12 16 4 12 0 12C4 12 12 8 12 0Z" fill="#8AB4F8"/></svg><span>Gemini</span></div>
-            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M11 4C11 2.895 11.895 2 13 2H17.5C18.88 2 20 3.12 20 4.5V9C20 10.105 19.105 11 18 11H13.5V14.5H20V19.5C20 20.88 18.88 22 17.5 22H6.5C5.12 22 4 20.88 4 19.5V4.5C4 3.12 5.12 2 6.5 2H11V4ZM6 19.5C6 19.776 6.224 20 6.5 20H17.5C17.776 20 18 19.776 18 19.5V16.5H11.5V9H18V4.5C18 4.224 17.776 4 17.5 4H13V6H6V19.5Z" fill="#D97757"/></svg><span>Claude</span></div>
-            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z" fill="currentColor"/></svg><span>Copilot</span></div>
-            <div className="partner-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/></svg><span>Microsoft</span></div>
+          <p className="mono-accent ecosystem-title">{localized('Technology Partners')}</p>
+          <div className="partner-groups">
+            {partnerGroups.map(({ label, partners }) => (
+              <div className="partner-group" key={label}>
+                <h3 className="partner-group-label">{localized(label)}</h3>
+                <div className="partner-chip-list">
+                  {partners.map((partner) => (
+                    <span className="partner-chip" key={partner.name}>
+                      <Image src={`/partner-logos/${partner.icon}.svg`} alt="" aria-hidden="true" width={18} height={18} className={`partner-chip-icon partner-chip-icon-${partner.icon}`} />
+                      <span>{partner.name}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -329,17 +212,17 @@ export default function PremiumLanding() {
       <section className="markets-section shell tight-section" id="markets">
         <div className="section-heading split-heading align-top" data-reveal>
           <div className="heading-left">
-            <div className="eyebrow mono-accent">Global Reach</div>
-            <h2 className="premium-h2">Supported<br /><em className="italic-accent">Markets.</em></h2>
+            <div className="eyebrow mono-accent">{localized('Global Reach')}</div>
+            <h2 className="premium-h2">{localized('Supported')}<br /><em className="italic-accent">{localized('Markets.')}</em></h2>
           </div>
-          <p className="heading-right-text">We operate and deploy infrastructure seamlessly across key strategic regions, ensuring low-latency delivery and localized engineering compliance.</p>
+          <p className="heading-right-text">{localized('We operate and deploy infrastructure seamlessly across key strategic regions, ensuring low-latency delivery and localized engineering compliance.')}</p>
         </div>
 
         <div className="map-wrapper" data-reveal data-delay="100">
           <div className="map-canvas">
             <Image
               src="/world.svg"
-              alt="Map showing Origins' supported markets"
+              alt={localized("Map showing Origins' supported markets")}
               width={1010}
               height={666}
               className="world-map-svg"
@@ -369,10 +252,10 @@ export default function PremiumLanding() {
       <section className="section capabilities-section shell tight-section" id="capabilities">
         <div className="section-heading split-heading align-top" data-reveal>
           <div className="heading-left">
-            <div className="eyebrow mono-accent">Capabilities</div>
-            <h2 className="premium-h2">Deep technical work.<br /><em className="italic-accent">Clear ownership.</em></h2>
+            <div className="eyebrow mono-accent">{localized('Capabilities')}</div>
+            <h2 className="premium-h2">{localized('Deep technical work.')}<br /><em className="italic-accent">{localized('Clear ownership.')}</em></h2>
           </div>
-          <p className="heading-right-text">Bring us the whole product, a complex technical layer or the system that needs to become dependable. We shape the team around the work—not the other way around.</p>
+          <p className="heading-right-text">{localized('Bring us the whole product, a complex technical layer or the system that needs to become dependable. We shape the team around the work—not the other way around.')}</p>
         </div>
 
         <div className="capability-list sleek-accordion">
@@ -380,14 +263,14 @@ export default function PremiumLanding() {
             <article className="capability-row premium-row" key={item.number} data-reveal data-delay={i * 50}>
               <div className="row-left">
                 <span className="capability-number mono-accent">{item.number}</span>
-                <h3 className="row-title">{item.title}</h3>
+                <h3 className="row-title">{localized(item.title)}</h3>
               </div>
               <div className="capability-main">
-                <p className="row-text">{item.text}</p>
+                <p className="row-text">{localized(item.text)}</p>
               </div>
               <div className="row-right">
-                <div className="capability-scope mono-tag">{item.scope}</div>
-                <Link className="row-link arrow-hover" aria-label={`Learn about ${item.title}`} href="/services"><span>↗</span></Link>
+                <div className="capability-scope mono-tag">{localized(item.scope)}</div>
+                <Link className="row-link arrow-hover" aria-label={`${localized('Learn about')} ${localized(item.title)}`} href="/services"><span>↗</span></Link>
               </div>
             </article>
           ))}
@@ -398,12 +281,12 @@ export default function PremiumLanding() {
       <section className="work-section bento-section shell tight-section" id="work">
         <div className="section-heading split-heading work-heading" data-reveal>
           <div>
-            <div className="eyebrow mono-accent">The work</div>
-            <h2 className="premium-h2">Problems first.<br /><em className="italic-accent">Technology second.</em></h2>
+            <div className="eyebrow mono-accent">{localized('The work')}</div>
+            <h2 className="premium-h2">{localized('Problems first.')}<br /><em className="italic-accent">{localized('Technology second.')}</em></h2>
           </div>
           <div className="work-heading-aside">
-            <p>Good engineering starts with the job the system needs to do. These are representative problem areas across product, platform and automation work.</p>
-            <Link className="text-link premium-text-link" href="/work">Explore our approach <span className="icon-smooth">↗</span></Link>
+            <p>{localized('Good engineering starts with the job the system needs to do. These are representative problem areas across product, platform and automation work.')}</p>
+            <Link className="text-link premium-text-link" href="/work">{localized('Explore our approach')} <span className="icon-smooth">↗</span></Link>
           </div>
         </div>
 
@@ -412,14 +295,14 @@ export default function PremiumLanding() {
             <article className="project-row bento-card" key={project.number} data-reveal data-delay={i * 100}>
               <div className="card-top">
                 <div className="project-number mono-accent">{project.number}</div>
-                <div className="eyebrow project-sector mono-tag">{project.sector}</div>
+                <div className="eyebrow project-sector mono-tag">{localized(project.sector)}</div>
               </div>
               <div className="project-content">
-                <h3 className="card-title">{project.title}</h3>
-                <p className="card-text">{project.text}</p>
+                <h3 className="card-title">{localized(project.title)}</h3>
+                <p className="card-text">{localized(project.text)}</p>
               </div>
               <div className="card-bottom">
-                <div className="project-disciplines">{project.disciplines}</div>
+                <div className="project-disciplines">{localized(project.disciplines)}</div>
                 <div className="project-symbol bento-arrow" aria-hidden="true">↗</div>
               </div>
             </article>
@@ -431,10 +314,10 @@ export default function PremiumLanding() {
       <section className="method-section timeline-section shell tight-section" id="approach">
         <div className="method-layout method-split">
           <div className="method-intro sticky-side" data-reveal>
-            <div className="eyebrow mono-accent">A considered process</div>
-            <h2 className="premium-h2">Less uncertainty.<br /><em className="italic-accent">Better decisions.</em></h2>
-            <p>Clear stages create room for good engineering. At each step, we make the next decision easier to see—and easier to explain.</p>
-            <Link className="text-link premium-text-link mt-4" href="/process">Our delivery process <span className="icon-smooth">↗</span></Link>
+            <div className="eyebrow mono-accent">{localized('A considered process')}</div>
+            <h2 className="premium-h2">{localized('Less uncertainty.')}<br /><em className="italic-accent">{localized('Better decisions.')}</em></h2>
+            <p>{localized('Clear stages create room for good engineering. At each step, we make the next decision easier to see—and easier to explain.')}</p>
+            <Link className="text-link premium-text-link mt-4" href="/process">{localized('Our delivery process')} <span className="icon-smooth">↗</span></Link>
           </div>
           <div className="delivery-list timeline-list">
             {deliverySteps.map(([number, title, text], i) => (
@@ -442,8 +325,8 @@ export default function PremiumLanding() {
                 <div className="timeline-node"></div>
                 <span className="delivery-number massive-number">{number}</span>
                 <div className="timeline-content">
-                  <h3 className="timeline-title">{title}</h3>
-                  <p className="timeline-text">{text}</p>
+                  <h3 className="timeline-title">{localized(title)}</h3>
+                  <p className="timeline-text">{localized(text)}</p>
                 </div>
               </article>
             ))}
@@ -454,8 +337,8 @@ export default function PremiumLanding() {
       {/* --- PRINCIPLES --- */}
       <section className="principles-section shell clean-grid tight-section" id="about">
         <div className="section-heading centered-heading" data-reveal>
-          <div className="eyebrow mono-accent">The Origins standard</div>
-          <h2 className="premium-h2">Trust is earned in<br /><em className="italic-accent">the details.</em></h2>
+          <div className="eyebrow mono-accent">{localized('The Origins standard')}</div>
+          <h2 className="premium-h2">{localized('Trust is earned in')}<br /><em className="italic-accent">{localized('the details.')}</em></h2>
         </div>
         <div className="principles-list bento-grid-2x2">
           {principles.map(([title, body], index) => (
@@ -464,8 +347,8 @@ export default function PremiumLanding() {
                 <span className="principle-index mono-accent">0{index + 1}</span>
                 <div className="tech-line"></div>
               </div>
-              <h3 className="card-title">{title}</h3>
-              <p className="card-text">{body}</p>
+              <h3 className="card-title">{localized(title)}</h3>
+              <p className="card-text">{localized(body)}</p>
             </article>
           ))}
         </div>
@@ -476,17 +359,17 @@ export default function PremiumLanding() {
         <div className="shell cta-layout" data-reveal>
           <div className="cta-grid-bg" aria-hidden="true"></div>
           <div className="cta-content-wrapper">
-            <div className="eyebrow mono-accent pulse-text">Start with a conversation</div>
-            <h2 className="massive-title">Bring us the<br /><em className="italic-accent">difficult part.</em></h2>
-            <p className="cta-p">Tell us what you are building, what is not working or what needs to happen next. We will help turn the problem into a practical plan.</p>
+            <div className="eyebrow mono-accent pulse-text">{localized('Start with a conversation')}</div>
+            <h2 className="massive-title">{localized('Bring us the')}<br /><em className="italic-accent">{localized('difficult part.')}</em></h2>
+            <p className="cta-p">{localized('Tell us what you are building, what is not working or what needs to happen next. We will help turn the problem into a practical plan.')}</p>
             <div className="hero-actions cta-actions">
-              <Link className="button button-primary premium-btn" href="/contact">Talk to Origins <span className="button-arrow icon-smooth" aria-hidden="true">↗</span></Link>
-              <a href="mailto:support@origins-software.com" className="button button-ghost premium-btn-ghost">Email the team <span className="button-arrow icon-smooth" aria-hidden="true">↗</span></a>
+              <Link className="button button-primary premium-btn" href="/contact">{localized('Talk to Origins')} <span className="button-arrow icon-smooth" aria-hidden="true">↗</span></Link>
+              <a href="mailto:support@origins-software.com" className="button button-ghost premium-btn-ghost">{localized('Email the team')} <span className="button-arrow icon-smooth" aria-hidden="true">↗</span></a>
             </div>
           </div>
           <div className="cta-footer-metrics">
             <span className="mono-accent">ORIGINS SOFTWARE</span>
-            <span className="mono-accent right-align">ENGINEERED WITH INTENT.</span>
+            <span className="mono-accent right-align">{localized('ENGINEERED WITH INTENT.')}</span>
           </div>
         </div>
       </section>
@@ -497,13 +380,19 @@ export default function PremiumLanding() {
       <style dangerouslySetInnerHTML={{ __html: `
         :root {
           --premium-ease: cubic-bezier(0.16, 1, 0.3, 1);
-          --surface-bg: #050505;
-          --surface-border: rgba(255, 255, 255, 0.08);
+          --surface-bg: #050b0d;
+          --surface-border: rgba(169, 188, 199, 0.13);
           --text-primary: #ffffff;
-          --text-secondary: #888888;
+          --text-secondary: #9aabb2;
         }
 
-        .premium-override { background-color: var(--surface-bg); color: var(--text-primary); overflow-x: hidden; }
+        .premium-override {
+          background:
+            radial-gradient(ellipse at 50% 0%, rgba(25, 56, 63, .18), transparent 46%),
+            var(--surface-bg);
+          color: var(--text-primary);
+          overflow-x: hidden;
+        }
 
         .reveal-pending { opacity: 0; transform: translateY(20px); }
         .is-visible { opacity: 1; transform: translateY(0); transition: opacity 0.8s var(--premium-ease), transform 0.8s var(--premium-ease); will-change: opacity, transform; }
@@ -522,46 +411,91 @@ export default function PremiumLanding() {
         .compact-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
         .hero-noise { position: absolute; inset: 0; opacity: 0.03; pointer-events: none; background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E'); }
 
-        /* FROSTED CHART WIDGET */
-        .premium-chart-widget {
-          position: relative; width: 100%; height: 340px; 
-          border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
-          background: linear-gradient(180deg, rgba(20,20,20,0.6) 0%, rgba(0,0,0,0.8) 100%);
-          backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-          display: flex; flex-direction: column; overflow: hidden;
+        .premium-hero {
+          min-height: min(860px, calc(100svh - 84px));
+          padding: clamp(3.5rem, 8vh, 6.5rem) 0 4rem;
+          border-bottom: 1px solid rgba(169,188,199,.1);
+          background:
+            linear-gradient(90deg, transparent 49.95%, rgba(169,188,199,.035) 50%, transparent 50.05%),
+            radial-gradient(ellipse at 78% 45%, rgba(205,220,57,.11), transparent 40%);
         }
-        
-        .arch-glow { position: absolute; width: 100%; height: 100%; top: 0; left: 0; filter: blur(60px); transition: background 1s ease; pointer-events: none; opacity: 0.4; mix-blend-mode: screen; }
-
-        .chart-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.25rem 1.5rem; position: relative; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .chart-title { color: #fff; font-weight: 500; }
-        .chart-subtitle { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
-        .chart-live-value { font-family: monospace; font-size: 2.2rem; line-height: 1; font-weight: 300; transition: color 0.5s ease; text-shadow: 0 0 20px currentColor; }
-        .ms-text { font-size: 0.9rem; color: var(--text-secondary); }
-
-        .chart-container { position: absolute; inset: 0; top: 80px; bottom: 40px; cursor: crosshair; z-index: 5; }
-        .chart-svg { width: 100%; height: 100%; display: block; overflow: visible; }
-        
-        .chart-grid line { stroke: rgba(255,255,255,0.08); stroke-width: 1; stroke-dasharray: 2 4; transition: y1 2.5s linear, y2 2.5s linear; }
-        .chart-area-path, .chart-line-path, .leading-dot { transition: all 2.5s linear; }
-
-        .crypto-price-tag {
-          position: absolute; right: 0; transform: translateY(-50%); padding: 3px 8px; color: #000; font-weight: bold; border-radius: 4px 0 0 4px;
-          display: flex; align-items: center; gap: 6px; box-shadow: -4px 0 15px rgba(0,0,0,0.5); transition: top 2.5s linear, background-color 0.5s ease; pointer-events: none;
+        .compact-hero { min-height: min(760px, calc(100svh - 84px)); grid-template-columns: 1.02fr .98fr; gap: clamp(2rem, 5vw, 5rem); padding-block: 2rem; }
+        .hero-copy { max-width: 680px; }
+        .hero-copy .hero-eyebrow { letter-spacing: .17em; }
+        .premium-override .massive-title { max-width: 760px; font-size: clamp(3.3rem, 7vw, 6.4rem); line-height: .98; letter-spacing: -.065em; }
+        .premium-override .hero-lede { max-width: 530px; font-size: clamp(1rem, 1.35vw, 1.15rem); line-height: 1.8; }
+        .software-showcase { position: relative; min-width: 0; padding: 1.5rem 0 1.5rem 1.5rem; perspective: 1200px; }
+        .software-showcase::before {
+          position: absolute; inset: 8% -4% 5% 2%; content: ""; border: 1px solid rgba(205,220,57,.13);
+          background: radial-gradient(ellipse at 60% 45%, rgba(205,220,57,.08), transparent 62%);
+          transform: rotate(-5deg); pointer-events: none;
         }
-        .pulse-dot { width: 6px; height: 6px; background: rgba(0,0,0,0.6); border-radius: 50%; animation: pulse 1s infinite alternate; }
-        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 1; } }
+        .showcase-window {
+          position: relative; z-index: 1; overflow: hidden; border: 1px solid rgba(169,188,199,.22);
+          background: linear-gradient(145deg, rgba(15,35,42,.98), rgba(5,15,19,.99) 72%);
+          box-shadow: 0 42px 100px rgba(0,0,0,.52), inset 0 1px rgba(255,255,255,.07);
+          transform: rotateY(-4deg) rotateX(1deg);
+          transition: transform .7s var(--premium-ease), box-shadow .7s var(--premium-ease);
+        }
+        .software-showcase:hover .showcase-window {
+          transform: rotateY(0) rotateX(0) translateY(-4px);
+          box-shadow: 0 52px 110px rgba(0,0,0,.58), inset 0 1px rgba(255,255,255,.08);
+        }
+        .showcase-window-bar, .showcase-intro, .showcase-footnote { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .showcase-window-bar { min-height: 50px; padding: 0 1.2rem; border-bottom: 1px solid var(--surface-border); background: rgba(255,255,255,.018); }
+        .window-dots { display: flex; gap: 5px; }
+        .window-dots i { width: 6px; height: 6px; border-radius: 50%; background: #48606a; }
+        .window-dots i:first-child { background: var(--lime); }
+        .showcase-window-label, .showcase-window-index, .showcase-footnote { color: #718893; font: 8px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .11em; }
+        .showcase-content { padding: clamp(1.5rem, 3vw, 2.25rem); }
+        .showcase-intro { align-items: flex-start; }
+        .showcase-kicker { color: #f2f5f7; font-size: 1.05rem; font-weight: 500; letter-spacing: -.03em; }
+        .showcase-live { display: inline-flex; align-items: center; gap: 7px; color: var(--lime); font: 7px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; }
+        .showcase-live i, .showcase-footnote i { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 9px rgba(205,220,57,.7); }
+        .showcase-flow { display: flex; align-items: center; gap: 8px; margin: 2rem 0; padding: 1.05rem 0; border-top: 1px solid rgba(169,188,199,.1); border-bottom: 1px solid rgba(169,188,199,.1); }
+        .flow-step { display: grid; gap: 5px; min-width: 0; }
+        .flow-step > span { color: #6b808a; font: 8px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .flow-step strong { color: #dce4e8; font-size: 10px; font-weight: 500; }
+        .flow-step small { color: #718893; font-size: 8px; line-height: 1.4; }
+        .flow-step-active > span, .flow-step-active strong { color: var(--lime); }
+        .flow-connector { height: 1px; min-width: 10px; flex: 1; background: linear-gradient(90deg, rgba(205,220,57,.5), rgba(169,188,199,.14)); }
+        .showcase-modules { display: grid; gap: 8px; }
+        .showcase-module { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid rgba(169,188,199,.12); background: linear-gradient(100deg, rgba(255,255,255,.035), rgba(255,255,255,.008)); transition: border-color .3s ease, transform .3s ease, background .3s ease; }
+        .showcase-module:hover { transform: translateX(4px); border-color: rgba(205,220,57,.32); background: linear-gradient(100deg, rgba(205,220,57,.055), rgba(255,255,255,.012)); }
+        .module-symbol { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; color: var(--lime); background: rgba(205,220,57,.08); font-size: 17px; }
+        .module-symbol-cloud { color: #9bb9c6; background: rgba(155,185,198,.08); }
+        .showcase-module > div { display: grid; gap: 2px; min-width: 0; }
+        .showcase-module strong { color: #e5ecef; font-size: 10px; font-weight: 500; }
+        .showcase-module small { color: #718893; font-size: 8px; }
+        .module-arrow { margin-left: auto; color: #718893; font-size: 13px; }
+        .showcase-footnote { justify-content: space-between; margin-top: 1.2rem; font-size: 7px; }
+        .showcase-footnote > span:last-child { display: inline-flex; align-items: center; gap: 7px; }
+        .showcase-orbit { position: absolute; border: 1px solid rgba(205,220,57,.12); border-radius: 50%; pointer-events: none; }
+        .showcase-orbit-one { width: 100px; height: 100px; top: -14px; right: -20px; }
+        .showcase-orbit-two { width: 58px; height: 58px; top: 7px; right: 1px; border-color: rgba(205,220,57,.2); }
 
-        .chart-tooltip { position: absolute; transform: translateX(-50%); background: rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 8px; pointer-events: none; text-align: center; white-space: nowrap; box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 20; }
-        .widget-footer { position: absolute; bottom: 0; width: 100%; display: flex; justify-content: space-between; padding: 0.75rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.7rem; color: var(--text-secondary); background: rgba(0,0,0,0.2); }
+        /* TECHNOLOGY PARTNERS */
+        .ecosystem-section { position: relative; padding: 3.5rem 0 4rem; border-bottom: 1px solid var(--surface-border); margin-bottom: 1rem; background: linear-gradient(180deg, rgba(255,255,255,.012), transparent); }
+        .ecosystem-title { margin: 0 0 1.6rem; opacity: .8; font-size: .7rem; }
+        .partner-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+        .partner-group { display: grid; grid-template-columns: minmax(105px, .3fr) 1fr; align-items: center; gap: 1rem; padding: 1.25rem 1.4rem; border: 1px solid var(--surface-border); background: linear-gradient(135deg, rgba(255,255,255,.035), rgba(255,255,255,.008)); transition: border-color .25s ease, transform .25s ease; }
+        .partner-group:hover { border-color: rgba(205,220,57,.28); transform: translateY(-2px); }
+        .partner-group-label { margin: 0; color: #8fa2aa; font: 8px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
+        .partner-chip-list { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+        .partner-chip { display: inline-flex; align-items: center; gap: .55rem; padding: .42rem .72rem; border: 1px solid rgba(169,188,199,.14); color: #d4dde1; background: rgba(4,15,19,.5); font-size: .75rem; font-weight: 500; white-space: nowrap; transition: color .2s ease, border-color .2s ease, background .2s ease; }
+        .partner-chip-icon { width: 18px; height: 18px; flex: 0 0 auto; object-fit: contain; filter: brightness(0) invert(.88); }
+        .partner-chip-icon-copilot { filter: none; }
+        .partner-chip:hover { color: var(--lime); border-color: rgba(205,220,57,.4); background: rgba(205,220,57,.055); }
 
-        /* ECOSYSTEM STRIP */
-        .ecosystem-section { padding: 3rem 0; border-bottom: 1px solid var(--surface-border); margin-bottom: 2rem; }
-        .ecosystem-title { margin-bottom: 1.5rem; opacity: 0.5; font-size: 0.7rem; }
-        .ecosystem-logos { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem; padding: 0 2rem; opacity: 0.7; }
-        .partner-logo { display: flex; align-items: center; gap: 0.75rem; font-weight: 500; font-size: 0.95rem; filter: grayscale(100%); transition: filter 0.3s ease, opacity 0.3s ease; opacity: 0.5; }
-        .partner-logo:hover { filter: grayscale(0%); opacity: 1; }
-        .partner-logo svg { flex-shrink: 0; }
+        .tight-section { padding-top: clamp(4rem, 8vw, 7rem); padding-bottom: clamp(4rem, 8vw, 7rem); }
+        .premium-h2 { font-size: clamp(2.2rem, 4vw, 4rem); letter-spacing: -.045em; }
+        .bento-card { position: relative; overflow: hidden; border-color: rgba(169,188,199,.12); background: linear-gradient(145deg, rgba(15,35,42,.72), rgba(6,16,20,.9)); }
+        .bento-card::before { position: absolute; inset: 0; content: ""; pointer-events: none; opacity: 0; background: radial-gradient(circle at 90% 8%, rgba(205,220,57,.09), transparent 34%); transition: opacity .4s ease; }
+        .bento-card:hover::before { opacity: 1; }
+        .bento-card > * { position: relative; }
+        .map-wrapper { border-color: rgba(169,188,199,.14); background: radial-gradient(ellipse at 50% 50%, #0b1c22, #03090c 72%); box-shadow: inset 0 1px rgba(255,255,255,.035); }
+        .brutalist-cta { background: radial-gradient(ellipse at 50% 100%, rgba(205,220,57,.08), transparent 55%); }
+        .cta-grid-bg { opacity: .12; }
 
         /* --- GLOBAL MAP WIDGET --- */
         .map-wrapper { 
@@ -680,22 +614,44 @@ export default function PremiumLanding() {
         /* RESPONSIVE */
         @media (max-width: 1024px) {
           .compact-hero { grid-template-columns: 1fr; gap: 3rem; }
+          .premium-hero, .compact-hero { min-height: auto; }
+          .hero-copy { max-width: 760px; padding-bottom: 0; }
+          .software-showcase { width: min(100%, 760px); justify-self: center; }
           .premium-row { grid-template-columns: 1fr; gap: 1rem; padding: 1.5rem 0; }
           .row-left { display: flex; flex-direction: column; gap: 0.25rem; }
           .bento-grid, .bento-grid-2x2 { grid-template-columns: 1fr 1fr; }
           .method-split { grid-template-columns: 1fr; }
           .sticky-side { position: static; margin-bottom: 2rem; }
-          .ecosystem-logos { justify-content: center; }
+          .partner-groups { grid-template-columns: 1fr; }
         }
         @media (max-width: 768px) {
-          .premium-chart-widget { height: 280px; }
+          .premium-hero { padding: 3rem 0 3.5rem; }
+          .compact-hero { gap: 2rem; padding-block: 0; }
+          .premium-override .massive-title { font-size: clamp(3rem, 11vw, 5rem); }
+          .software-showcase { padding: .5rem 0 .5rem .5rem; }
+          .showcase-window { transform: none; }
+          .showcase-content { padding: 1rem; }
+          .showcase-flow { gap: 5px; margin: 1.4rem 0; }
+          .flow-step strong { font-size: 9px; }
+          .flow-step small { font-size: 7px; }
+          .flow-connector { min-width: 5px; }
+          .showcase-live { max-width: 110px; text-align: right; }
+          .partner-group { grid-template-columns: 1fr; gap: .75rem; }
+          .partner-chip { font-size: .7rem; }
           .map-wrapper { height: 350px; }
           .map-canvas { max-width: 530px; }
           .bento-grid, .bento-grid-2x2 { grid-template-columns: 1fr; }
           .timeline-list { padding-left: 1.5rem; }
           .timeline-node { left: -1.5rem; }
-          .crypto-price-tag { display: none; }
           .node-label { display: none; /* Keep mobile clean */ }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .showcase-window, .showcase-module, .partner-group, .partner-chip, .bento-card::before {
+            transition: none;
+          }
+          .software-showcase:hover .showcase-window, .showcase-module:hover, .partner-group:hover {
+            transform: none;
+          }
         }
       `}} />
     </main>

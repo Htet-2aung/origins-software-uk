@@ -1,7 +1,9 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/app/components/LocaleLink';
 import { useCallback, useEffect, useState } from 'react';
+import { translate } from '@/app/i18n';
+import { useLocale } from './LocaleProvider';
 import {
   COOKIE_PREFERENCES_CHANGED,
   OPEN_COOKIE_SETTINGS,
@@ -14,6 +16,8 @@ import {
 type Choice = Pick<CookiePreferences, 'necessary' | 'analytics' | 'marketing'>;
 
 export default function CookieConsent() {
+  const locale = useLocale();
+  const localized = (text: string) => translate(locale, text);
   const [bannerOpen, setBannerOpen] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [hasSavedChoice, setHasSavedChoice] = useState(false);
@@ -104,15 +108,15 @@ export default function CookieConsent() {
       {bannerOpen && !preferencesOpen && (
         <section className="cookie-consent-banner" aria-labelledby="cookie-banner-title" role="region">
           <div className="cookie-consent-copy">
-            <span className="cookie-eyebrow">YOUR PRIVACY</span>
-            <h2 id="cookie-banner-title">Your choices matter.</h2>
-            <p>We use essential storage to remember this choice. Optional analytics and marketing technologies stay off unless you allow them.</p>
-            <Link href="/legal/cookies" className="cookie-policy-link">Read the cookie policy <span aria-hidden="true">↗</span></Link>
+            <span className="cookie-eyebrow">{localized('YOUR PRIVACY')}</span>
+            <h2 id="cookie-banner-title">{localized('Your choices matter.')}</h2>
+            <p>{localized('We use essential storage to remember this choice. Optional analytics and marketing technologies stay off unless you allow them.')}</p>
+            <Link href="/legal/cookies" className="cookie-policy-link">{localized('Read the cookie policy')} <span aria-hidden="true">↗</span></Link>
           </div>
           <div className="cookie-consent-actions">
-            <button className="cookie-button cookie-button-primary" onClick={() => commit({ necessary: true, analytics: true, marketing: true })}>Accept all</button>
-            <button className="cookie-button" onClick={() => commit({ necessary: true, analytics: false, marketing: false })}>Reject optional</button>
-            <button className="cookie-text-button" onClick={() => setPreferencesOpen(true)}>Customise</button>
+            <button className="cookie-button cookie-button-primary" onClick={() => commit({ necessary: true, analytics: true, marketing: true })}>{localized('Accept all')}</button>
+            <button className="cookie-button" onClick={() => commit({ necessary: true, analytics: false, marketing: false })}>{localized('Reject optional')}</button>
+            <button className="cookie-text-button" onClick={() => setPreferencesOpen(true)}>{localized('Customise')}</button>
           </div>
         </section>
       )}
@@ -121,27 +125,27 @@ export default function CookieConsent() {
         <div className="cookie-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && hasSavedChoice) setPreferencesOpen(false); }}>
           <section className="cookie-preferences-dialog" role="dialog" aria-modal="true" aria-labelledby="cookie-settings-title">
             <div className="cookie-dialog-heading">
-              <div><span className="cookie-eyebrow">PRIVACY CONTROLS</span><h2 id="cookie-settings-title">Cookie preferences</h2></div>
-              <button className="cookie-dialog-close" aria-label="Close cookie preferences" onClick={() => setPreferencesOpen(false)}>×</button>
+              <div><span className="cookie-eyebrow">{localized('PRIVACY CONTROLS')}</span><h2 id="cookie-settings-title">{localized('Cookie preferences')}</h2></div>
+              <button className="cookie-dialog-close" aria-label={localized('Close cookie preferences')} onClick={() => setPreferencesOpen(false)}>×</button>
             </div>
-            <p className="cookie-dialog-intro">Choose which optional technologies Origins Software may use. You can change your selection at any time from Settings.</p>
+            <p className="cookie-dialog-intro">{localized('Choose which optional technologies Origins Software may use. You can change your selection at any time from Settings.')}</p>
             <div className="cookie-preference-row">
-              <div><h3>Strictly necessary</h3><p>Required for basic site operation and remembering your privacy choice.</p></div>
-              <span className="cookie-always-on">Always on</span>
+              <div><h3>{localized('Strictly necessary')}</h3><p>{localized('Required for basic site operation and remembering your privacy choice.')}</p></div>
+              <span className="cookie-always-on">{localized('Always on')}</span>
             </div>
             <label className="cookie-preference-row" htmlFor="cookie-analytics">
-              <div><h3>Analytics and performance</h3><p>Allows future, consent-gated measurement of site usage. No analytics tool is loaded by this preference component itself.</p></div>
+              <div><h3>{localized('Analytics and performance')}</h3><p>{localized('Allows future, consent-gated measurement of site usage. No analytics tool is loaded by this preference component itself.')}</p></div>
               <input id="cookie-analytics" type="checkbox" checked={choice.analytics} onChange={(event) => setChoice((current) => ({ ...current, analytics: event.target.checked }))} />
             </label>
             <label className="cookie-preference-row" htmlFor="cookie-marketing">
-              <div><h3>Marketing</h3><p>Allows future, consent-gated marketing pixels or campaign measurement if configured.</p></div>
+              <div><h3>{localized('Marketing')}</h3><p>{localized('Allows future, consent-gated marketing pixels or campaign measurement if configured.')}</p></div>
               <input id="cookie-marketing" type="checkbox" checked={choice.marketing} onChange={(event) => setChoice((current) => ({ ...current, marketing: event.target.checked }))} />
             </label>
             <div className="cookie-dialog-actions">
-              <button className="cookie-button" onClick={() => commit({ necessary: true, analytics: false, marketing: false })}>Reject optional</button>
-              <button className="cookie-button cookie-button-primary" onClick={() => commit(choice)}>Save preferences</button>
+              <button className="cookie-button" onClick={() => commit({ necessary: true, analytics: false, marketing: false })}>{localized('Reject optional')}</button>
+              <button className="cookie-button cookie-button-primary" onClick={() => commit(choice)}>{localized('Save preferences')}</button>
             </div>
-            <p className="cookie-storage-note">Your preference is saved in this browser for up to 12 months. <Link href="/legal/cookies">Cookie policy</Link></p>
+            <p className="cookie-storage-note">{localized('Your preference is saved in this browser for up to 12 months.')} <Link href="/legal/cookies">{localized('Cookie policy')}</Link></p>
           </section>
         </div>
       )}

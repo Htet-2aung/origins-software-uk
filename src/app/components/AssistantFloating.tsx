@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import Link from '@/app/components/LocaleLink';
+import { localeNames, locales, translate } from '@/app/i18n';
+import { useLocale } from './LocaleProvider';
 
 type ChatRole = 'user' | 'assistant';
 type ChatMessage = { id: string; role: ChatRole; content: string; sources?: string[] };
@@ -22,8 +25,11 @@ function createSessionId(): string {
 }
 
 export default function AssistantFloating() {
+  const locale = useLocale();
+  const localized = (text: string) => translate(locale, text);
+  const welcomeMessage = { ...WELCOME_MESSAGE, content: localized(WELCOME_MESSAGE.content) };
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState('');
@@ -94,6 +100,7 @@ export default function AssistantFloating() {
           conversationHistory: history,
           sessionId,
           pageUrl: window.location.href,
+          locale,
         }),
         signal: controller.signal,
       });
@@ -140,7 +147,7 @@ export default function AssistantFloating() {
 
   const resetConversation = () => {
     if (isLoading) return;
-    setMessages([WELCOME_MESSAGE]);
+    setMessages([welcomeMessage]);
     setInput('');
     setErrorMessage('');
     setIsLoading(false);
@@ -149,9 +156,14 @@ export default function AssistantFloating() {
   return (
     <div className="origins-assistant-root">
       {!isOpen && (
-        <button ref={launcherRef} className="origins-assistant-launcher" type="button" onClick={() => setIsOpen(true)} aria-label="Open Origins AI assistant" aria-haspopup="dialog">
-          <span className="origins-assistant-launcher-icon" aria-hidden="true">✳</span>
-          <span className="origins-assistant-launcher-label">Ask Origins</span>
+        <button ref={launcherRef} className="origins-assistant-launcher" type="button" onClick={() => setIsOpen(true)} aria-label={localized('Open Origins AI assistant')} aria-haspopup="dialog">
+          <span className="origins-assistant-launcher-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M5 5.75h14a1.25 1.25 0 0 1 1.25 1.25v8A1.25 1.25 0 0 1 19 16.25h-8l-4.5 3v-3.13A1.25 1.25 0 0 1 4.75 15V7A1.25 1.25 0 0 1 6 5.75Z" />
+              <path d="M9 10.25h6M9 13h3.5" />
+            </svg>
+          </span>
+          <span className="origins-assistant-launcher-label">{localized('Ask Origins')}</span>
         </button>
       )}
 
@@ -160,46 +172,57 @@ export default function AssistantFloating() {
           <header className="origins-assistant-header">
             <div className="origins-assistant-mark" aria-hidden="true">O.</div>
             <div className="origins-assistant-heading">
-              <h2 id="origins-assistant-title">Origins Assistant</h2>
-              <p><span className="origins-assistant-status-dot" /> Knowledge assistant</p>
+              <h2 id="origins-assistant-title">{localized('Origins Assistant')}</h2>
+              <p><span className="origins-assistant-status-dot" /> {localized('Knowledge assistant')}</p>
             </div>
-            <button type="button" className="origins-assistant-icon-button" onClick={resetConversation} disabled={isLoading} aria-label="Clear conversation" title="Clear conversation">↺</button>
-            <button type="button" className="origins-assistant-icon-button" onClick={() => setIsOpen(false)} aria-label="Close assistant">×</button>
+            <button type="button" className="origins-assistant-icon-button" onClick={resetConversation} disabled={isLoading} aria-label={localized('Clear conversation')} title={localized('Clear conversation')}>↺</button>
+            <button type="button" className="origins-assistant-icon-button" onClick={() => setIsOpen(false)} aria-label={localized('Close assistant')}>×</button>
           </header>
 
-          <div className="origins-assistant-messages" ref={messagesRef} aria-label="Conversation" aria-live="polite" aria-relevant="additions text">
+          <div className="origins-assistant-languages">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 3a14 14 0 0 1 0 18m0-18a14 14 0 0 0 0 18" />
+            </svg>
+            <span className="origins-assistant-languages-label">{localized('Replies in your selected language')}</span>
+            <span className="origins-assistant-language-list">
+              {locales.map((language) => <span key={language}>{localeNames[language]}</span>)}
+            </span>
+          </div>
+
+          <div className="origins-assistant-messages" ref={messagesRef} aria-label={localized('Conversation')} aria-live="polite" aria-relevant="additions text">
             {messages.map((message) => (
               <article key={message.id} className={`origins-assistant-message origins-assistant-message-${message.role}`}>
                 {message.role === 'assistant' && <span className="origins-assistant-avatar" aria-hidden="true">O</span>}
                 <div className="origins-assistant-message-content">
                   <p>{message.content}</p>
                   {message.sources && message.sources.length > 0 && (
-                    <div className="origins-assistant-sources"><span>Sources</span>{message.sources.map((source, index) => <p key={`${source}-${index}`}>{source}</p>)}</div>
+                    <div className="origins-assistant-sources"><span>{localized('Sources')}</span>{message.sources.map((source, index) => <p key={`${source}-${index}`}>{source}</p>)}</div>
                   )}
                 </div>
               </article>
             ))}
-            {isLoading && <div className="origins-assistant-loading" role="status"><span /><span /><span /> <em>Searching the knowledge base…</em></div>}
+            {isLoading && <div className="origins-assistant-loading" role="status"><span /><span /><span /> <em>{localized('Searching the knowledge base…')}</em></div>}
           </div>
 
           {errorMessage && <p className="origins-assistant-error" role="alert">{errorMessage}</p>}
 
           <form className="origins-assistant-composer" onSubmit={(event) => { void sendMessage(event); }}>
-            <label className="sr-only" htmlFor="origins-assistant-input">Your message</label>
+            <label className="sr-only" htmlFor="origins-assistant-input">{localized('Your message')}</label>
             <input
               ref={inputRef}
               id="origins-assistant-input"
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about Origins…"
+              placeholder={localized('Ask about Origins…')}
               maxLength={4000}
               disabled={isLoading}
               autoComplete="off"
             />
-            <button type="submit" disabled={!input.trim() || isLoading} aria-label="Send message">↗</button>
+            <button type="submit" disabled={!input.trim() || isLoading} aria-label={localized('Send message')}>↗</button>
           </form>
-          <footer className="origins-assistant-footer">AI-generated responses may be inaccurate. <a href="/settings">Privacy & settings</a></footer>
+          <footer className="origins-assistant-footer">{localized('AI-generated responses may be inaccurate.')} <Link href="/settings">{localized('Privacy & settings')}</Link></footer>
         </section>
       )}
     </div>

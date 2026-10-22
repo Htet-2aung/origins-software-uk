@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { localeNames, locales } from '@/app/i18n';
 
 export const runtime = 'nodejs';
 export const maxDuration = 40;
@@ -168,6 +169,7 @@ export async function POST(request: Request) {
   });
   const sessionId = typeof body.sessionId === 'string' ? body.sessionId.replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 128) : undefined;
   const pageUrl = safePageUrl(body.pageUrl, request);
+  const locale = locales.find((supportedLocale) => supportedLocale === body.locale) ?? 'en';
 
   const authKey = process.env.RAG_API_KEY;
   const authHeader = process.env.RAG_API_AUTH_HEADER?.trim() || 'Authorization';
@@ -188,7 +190,14 @@ export async function POST(request: Request) {
     const upstream = await fetch(endpoint.toString(), {
       method: 'POST',
       headers,
-      body: JSON.stringify({ message, conversationHistory, sessionId, pageUrl }),
+      body: JSON.stringify({
+        message,
+        conversationHistory,
+        sessionId,
+        pageUrl,
+        locale,
+        responseLanguage: localeNames[locale],
+      }),
       signal: controller.signal,
       cache: 'no-store',
     });

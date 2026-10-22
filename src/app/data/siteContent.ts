@@ -81,6 +81,8 @@ export type WorkPattern = {
   sector: string;
   title: string;
   description: string;
+  challenge: string;
+  approach: string;
   disciplines: string[];
   questions: string[];
 };
@@ -89,20 +91,50 @@ export const workPatterns: WorkPattern[] = [
   {
     slug: 'computer-vision-intelligence', number: '01', sector: 'Computer vision', title: 'Turning visual data into dependable decisions',
     description: 'A representative solution pattern for teams that need to detect, classify or track objects in variable real-world environments. Architecture is shaped by dataset quality, latency, deployment constraints and the cost of mistakes.',
+    challenge: 'Inspection teams may need to review large volumes of visual evidence across changing environments. Lighting, camera placement, image quality and uncommon edge cases can all affect model reliability.',
+    approach: 'Establish a representative evaluation dataset, agree the cost of false positives and false negatives, then compare inference options against real latency, privacy and deployment constraints. Keep uncertain predictions reviewable by people.',
     disciplines: ['Applied ML and evaluation', 'Data pipelines and labelling strategy', 'Inference integration and monitoring'],
     questions: ['Which conditions and edge cases determine real-world performance?', 'Where should inference run: device, edge or cloud?', 'How will drift, false positives and model updates be handled?'],
   },
   {
     slug: 'connected-workspace', number: '02', sector: 'Connected workflows', title: 'Bringing fragmented operations into one workspace',
     description: 'A representative platform pattern for consolidating communication, project work, documents and operational workflows behind coherent identity and access controls.',
+    challenge: 'Operational context can become scattered across chat, task tracking, documents and line-of-business systems. Teams lose time switching tools, while duplicated data and inconsistent permissions create avoidable risk.',
+    approach: 'Map the workflows and authoritative data sources before designing a shared workspace. Integrate through explicit service boundaries, preserve source-system ownership, and make identity, permissions, audit history and sync failures visible.',
     disciplines: ['Product engineering and UX', 'Realtime systems and integrations', 'Identity, permissions and audit trails'],
     questions: ['Which workflows should be unified—and which should stay independent?', 'How will permissions map to teams, projects and records?', 'What happens when connected systems are unavailable or out of sync?'],
   },
   {
     slug: 'autonomous-workflows', number: '03', sector: 'AI & automation', title: 'Making automated systems useful and governable',
     description: 'A representative AI-agent pattern for coordinating multi-step work across business tools while keeping permissions, traces, human review and failure recovery explicit.',
+    challenge: 'A multi-step operational workflow may span several business tools, involve repetitive decisions and still require human judgement for sensitive exceptions. Unbounded automation makes errors difficult to inspect or reverse.',
+    approach: 'Break the workflow into observable steps with narrowly scoped tool access. Evaluate against representative tasks, log decisions and tool calls, and define approval, retry, pause and escalation paths before automating consequential actions.',
     disciplines: ['Agent orchestration and tool use', 'Evaluation and workflow observability', 'Human-in-the-loop controls'],
     questions: ['Which actions can run automatically, and which require approval?', 'How are tool calls, decisions and exceptions recorded?', 'How can workflows pause safely, retry or escalate?'],
+  },
+  {
+    slug: 'legacy-platform-modernisation', number: '04', sector: 'Platform modernisation', title: 'Modernising a critical platform without a risky rewrite',
+    description: 'A representative modernisation pattern for organisations that need to improve a business-critical system while keeping existing services available and limiting operational disruption.',
+    challenge: 'A long-lived platform can accumulate fragile dependencies, slow release cycles and knowledge concentrated in a few people. Replacing everything at once can increase delivery risk and make continuity harder to protect.',
+    approach: 'Map system boundaries, dependencies and operational risks first. Prioritise small changes around high-value workflows, add contract and regression checks, and migrate data or capabilities in stages with observable cutover and rollback plans.',
+    disciplines: ['Architecture and technical discovery', 'Incremental migration and testing', 'Release planning and operational handover'],
+    questions: ['Which workflows and integrations are most critical to continuity?', 'How can old and new components coexist during transition?', 'What evidence is required before each migration step?'],
+  },
+  {
+    slug: 'cloud-foundation', number: '05', sector: 'Cloud & reliability', title: 'Creating a cloud foundation teams can operate',
+    description: 'A representative cloud engineering pattern for teams that need repeatable environments, safer releases and clearer operational ownership as a digital service grows.',
+    challenge: 'Manual environment setup, inconsistent deployments and unclear recovery responsibilities can slow delivery and make incidents harder to manage as usage and team size increase.',
+    approach: 'Define environment and access boundaries, codify repeatable infrastructure, and build a release pipeline with automated checks. Pair monitoring and alerting with backup, rollback and recovery procedures that the team can rehearse.',
+    disciplines: ['Cloud architecture and infrastructure as code', 'CI/CD and release automation', 'Observability, security and recovery planning'],
+    questions: ['Which service objectives reflect the user experience that matters?', 'How are environments, secrets and access controlled?', 'Can the team recover from a failed release or data loss?'],
+  },
+  {
+    slug: 'digital-product-launch', number: '06', sector: 'Digital product', title: 'Taking a digital product from concept to a dependable release',
+    description: 'A representative product engineering pattern for turning a validated user need into a focused application, with a delivery path that supports learning after launch.',
+    challenge: 'Early product ideas often combine assumptions about users, features, data and technology. Building too much before validating those assumptions can increase cost without improving the product’s fit.',
+    approach: 'Align stakeholders around user needs and a measurable first release. Prototype important journeys, choose a maintainable architecture, and deliver in reviewable increments with accessibility, testing, analytics consent and operational needs considered from the outset.',
+    disciplines: ['Product discovery and experience design', 'Full-stack application engineering', 'Quality, accessibility and release readiness'],
+    questions: ['Which user need should the first release prove?', 'What can be learned before committing to the full build?', 'How will quality and product feedback shape the next iteration?'],
   },
 ];
 

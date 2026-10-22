@@ -1,10 +1,12 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from '@/app/components/LocaleLink';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { processStages, serviceSpecialties, workPatterns } from '@/app/data/siteContent';
+import { localeNames, locales, localePath, translate, type Locale } from '@/app/i18n';
+import { useLocale } from './LocaleProvider';
 
 const clientPortalUrl = process.env.NEXT_PUBLIC_CLIENT_PORTAL_URL || 'https://portal.origins-software.com';
 type MenuKey = 'services' | 'work' | 'process';
@@ -18,9 +20,9 @@ const menuGroups: { key: MenuKey; href: string; label: string; eyebrow: string; 
     items: serviceSpecialties.map((item) => ({ href: `/services/${item.slug}`, title: item.title, description: item.category, number: item.number })),
   },
   {
-    key: 'work', href: '/work', label: 'Work', eyebrow: 'Representative solution patterns',
-    title: 'Start with the problem to solve.',
-    description: 'Explore examples of the system challenges we help teams think through. These are illustrative patterns, not named client case studies.',
+    key: 'work', href: '/portfolio', label: 'Work', eyebrow: 'Portfolio / selected case studies',
+    title: 'Explore the problems behind the work.',
+    description: 'Browse representative case studies across software, platforms, cloud and AI. The examples explain our approach without claiming named client results.',
     items: workPatterns.map((item) => ({ href: `/work/${item.slug}`, title: item.title, description: item.sector, number: item.number })),
   },
   {
@@ -44,7 +46,135 @@ function pathIsActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function groupIsActive(pathname: string, group: typeof menuGroups[number], locale: Locale) {
+  return pathIsActive(pathname, localePath(group.href, locale)) ||
+    (group.key === 'work' && pathIsActive(pathname, localePath('/work', locale)));
+}
+
+function LanguagePicker({ locale, pathname, mobile = false }: { locale: Locale; pathname: string; mobile?: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [opensAbove, setOpensAbove] = useState(false);
+  const [menuMaxHeight, setMenuMaxHeight] = useState<number | null>(null);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const languageLabel = translate(locale, 'Language');
+  const menuId = mobile ? 'language-picker-menu-mobile' : 'language-picker-menu';
+
+  const toggleMenu = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+
+    if (mobile && triggerRef.current) {
+      const triggerBounds = triggerRef.current.getBoundingClientRect();
+      const headerBottom = document.querySelector('.site-nav-inner')?.getBoundingClientRect().bottom ?? 0;
+      const availableAbove = triggerBounds.top - headerBottom - 18;
+      const availableBelow = window.innerHeight - triggerBounds.bottom - 18;
+      const placeAbove = availableBelow < 306 && availableAbove > availableBelow;
+      setOpensAbove(placeAbove);
+      setMenuMaxHeight(Math.max(160, Math.min(306, (placeAbove ? availableAbove : availableBelow) - 12)));
+    }
+
+    setIsOpen(true);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !pickerRef.current?.contains(event.target)) setIsOpen(false);
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [isOpen]);
+
+  const chooseLanguage = (language: Locale) => {
+    setIsOpen(false);
+    if (language !== locale) window.location.assign(localePath(pathname || '/', language));
+  };
+
+  return (
+    <div className={`language-picker${mobile ? ' mobile-language-picker' : ''}`} ref={pickerRef}>
+      {mobile && <span className="mobile-language-label">{languageLabel}</span>}
+      <button
+        type="button"
+        className={`language-picker-control${isOpen ? ' is-open' : ''}`}
+        aria-label={`${languageLabel}: ${localeNames[locale]}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
+        onClick={toggleMenu}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && isOpen) {
+            event.stopPropagation();
+            setIsOpen(false);
+            triggerRef.current?.focus();
+          }
+        }}
+        ref={triggerRef}
+      >
+        <span className="language-picker-globe-wrap">
+          <svg className="language-picker-globe" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.25" />
+            <path d="M3.9 12h16.2M12 3.75c2.05 2.25 3.08 5 3.08 8.25s-1.03 6-3.08 8.25C9.95 18 8.92 15.25 8.92 12S9.95 6 12 3.75Z" />
+          </svg>
+        </span>
+        <span className="language-picker-copy">
+          <span className="language-picker-caption">{languageLabel}</span>
+          <span className="language-picker-value">{localeNames[locale]}</span>
+        </span>
+        <span className="language-picker-code">{locale.toUpperCase()}</span>
+        <svg className="language-picker-chevron" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="m3 4.5 3 3 3-3" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div
+          className={`language-picker-menu${mobile && opensAbove ? ' opens-above' : ''}`}
+          id={menuId}
+          role="menu"
+          aria-label={languageLabel}
+          style={mobile && menuMaxHeight !== null ? { maxHeight: `${menuMaxHeight}px` } : undefined}
+        >
+          <div className="language-picker-menu-heading">
+            <span>{translate(locale, 'Select language')}</span>
+            <span className="language-picker-menu-count">{String(locales.length).padStart(2, '0')}</span>
+          </div>
+          {locales.map((language) => (
+            <button
+              key={language}
+              type="button"
+              className={`language-picker-option${language === locale ? ' is-selected' : ''}`}
+              role="menuitemradio"
+              aria-checked={language === locale}
+              onClick={() => chooseLanguage(language)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.stopPropagation();
+                  setIsOpen(false);
+                  triggerRef.current?.focus();
+                }
+              }}
+            >
+              <span className="language-picker-option-code">{language.toUpperCase()}</span>
+              <span className="language-picker-option-name">{localeNames[language]}</span>
+              <span className="language-picker-option-check" aria-hidden="true">
+                {language === locale && <svg viewBox="0 0 16 16" fill="none"><path d="m3.5 8 3 3 6-6" /></svg>}
+              </span>
+            </button>
+          ))}
+          <div className="language-picker-menu-foot"><span className="language-picker-menu-dot" />{translate(locale, 'Available across the site')}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SiteHeader() {
+  const locale = useLocale();
+  const localized = (text: string) => translate(locale, text);
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null);
   const [openMobileGroup, setOpenMobileGroup] = useState<MenuKey | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -85,7 +215,7 @@ export default function SiteHeader() {
 
   return (
     <>
-      <a className="skip-link" href="#main-content">Skip to content</a>
+      <a className="skip-link" href="#main-content">{localized('Skip to content')}</a>
       <header
         className={`company-site-header${openMenu ? ' has-open-menu' : ''}`}
         id="top"
@@ -96,14 +226,14 @@ export default function SiteHeader() {
         }}
       >
         <div className="site-nav-inner">
-          <Link href="/" className="brand" aria-label="Origins Software home" onClick={() => { setOpenMenu(null); setMobileOpen(false); }}>
+          <Link href="/" className="brand" aria-label={localized('Origins Software home')} onClick={() => { setOpenMenu(null); setMobileOpen(false); }}>
             <BrandLockup />
           </Link>
 
-          <nav className="desktop-nav" aria-label="Primary navigation">
+          <nav className="desktop-nav" aria-label={localized('Primary navigation')}>
             {menuGroups.map((group) => (
               <div
-                className={`desktop-nav-item${pathIsActive(pathname, group.href) ? ' is-active' : ''}${openMenu === group.key ? ' is-open' : ''}`}
+                className={`desktop-nav-item${groupIsActive(pathname, group, locale) ? ' is-active' : ''}${openMenu === group.key ? ' is-open' : ''}`}
                 key={group.key}
                 onMouseEnter={() => setOpenMenu(group.key)}
                 onFocus={() => {
@@ -112,12 +242,12 @@ export default function SiteHeader() {
                 }}
               >
                 <Link href={group.href} className="desktop-nav-link" aria-haspopup="true" aria-expanded={openMenu === group.key}>
-                  {group.label}
+                  {localized(group.label)}
                 </Link>
                 <button
                   type="button"
                   className="nav-menu-toggle"
-                  aria-label={`Open ${group.label} menu`}
+                  aria-label={`${localized('Open')} ${localized(group.label)} ${localized('menu')}`}
                   aria-expanded={openMenu === group.key}
                   aria-controls={openMenu === group.key ? 'desktop-mega-menu' : undefined}
                   ref={(element) => { menuTriggerRefs.current[group.key] = element; }}
@@ -125,12 +255,14 @@ export default function SiteHeader() {
                 ><span aria-hidden="true">⌄</span></button>
               </div>
             ))}
-            <Link href="/about" className={`desktop-nav-link desktop-nav-about${pathIsActive(pathname, '/about') ? ' is-active' : ''}`}>About</Link>
+            <Link href="/about" className={`desktop-nav-link desktop-nav-about${pathIsActive(pathname, localePath('/about', locale)) ? ' is-active' : ''}`}>{localized('About')}</Link>
           </nav>
 
           <div className="desktop-nav-actions">
-            <a href={clientPortalUrl} className="nav-quiet" target="_blank" rel="noreferrer">Client portal <span aria-hidden="true">↗</span></a>
-            <Link href="/contact" className="nav-cta">Start a project <span aria-hidden="true">↗</span></Link>
+            <span className="nav-status"><span className="nav-status-dot" /> {localized('UK / Global delivery')}</span>
+            <LanguagePicker locale={locale} pathname={pathname || '/'} />
+            <a href={clientPortalUrl} className="nav-quiet" target="_blank" rel="noreferrer">{localized('Client portal')} <span aria-hidden="true">↗</span></a>
+            <Link href="/contact" className="nav-cta">{localized('Start a project')} <span aria-hidden="true">↗</span></Link>
           </div>
 
           <button
@@ -139,7 +271,7 @@ export default function SiteHeader() {
             ref={mobileTriggerRef}
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
-            aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+            aria-label={localized(mobileOpen ? 'Close navigation' : 'Open navigation')}
             onClick={() => { if (mobileOpen) setOpenMobileGroup(null); setMobileOpen(!mobileOpen); }}
           >
             <span /> <span />
@@ -147,22 +279,23 @@ export default function SiteHeader() {
         </div>
 
         {activeGroup && (
-          <div className={`mega-menu mega-menu-${activeGroup.key} is-open`} id="desktop-mega-menu" role="region" aria-label={`${activeGroup.label} quick navigation`}>
+          <div className={`mega-menu mega-menu-${activeGroup.key} is-open`} id="desktop-mega-menu" role="region" aria-label={`${localized(activeGroup.label)} ${localized('quick navigation')}`}>
             <div className="mega-menu-inner">
               <div className="mega-menu-intro">
                 <div className="mega-menu-eyebrow">{activeGroup.eyebrow}</div>
-                <h2>{activeGroup.title}</h2>
-                <p>{activeGroup.description}</p>
+                <h2>{localized(activeGroup.title)}</h2>
+                <p>{localized(activeGroup.description)}</p>
                 <Link className="mega-menu-all" href={activeGroup.href} onClick={() => setOpenMenu(null)}>
-                  Explore {activeGroup.label.toLowerCase()} <span aria-hidden="true">↗</span>
+                  {localized(`Explore ${activeGroup.label.toLowerCase()}`)} <span aria-hidden="true">↗</span>
                 </Link>
-                {activeGroup.key === 'services' && <Link className="mega-menu-secondary" href="/features" onClick={() => setOpenMenu(null)}>Engineering standards <span aria-hidden="true">↗</span></Link>}
+                {activeGroup.key === 'services' && <Link className="mega-menu-secondary" href="/features" onClick={() => setOpenMenu(null)}>{localized('Engineering standards')} <span aria-hidden="true">↗</span></Link>}
+                {activeGroup.key === 'work' && <Link className="mega-menu-secondary" href="/work" onClick={() => setOpenMenu(null)}>{localized('Case studies')} <span aria-hidden="true">↗</span></Link>}
               </div>
               <div className="mega-menu-links">
                 {activeGroup.items.map((item) => (
                   <Link href={item.href} key={item.href} className="mega-menu-link" onClick={() => setOpenMenu(null)}>
                     <span className="mega-menu-number">{item.number}</span>
-                    <span className="mega-menu-link-copy"><strong>{item.title}</strong><small>{item.description}</small></span>
+                    <span className="mega-menu-link-copy"><strong>{localized(item.title)}</strong><small>{localized(item.description)}</small></span>
                     <span className="mega-menu-arrow" aria-hidden="true">↗</span>
                   </Link>
                 ))}
@@ -171,22 +304,24 @@ export default function SiteHeader() {
           </div>
         )}
 
-        <nav id="mobile-navigation" className={`mobile-nav-panel ${mobileOpen ? 'is-open' : ''}`} aria-label="Mobile navigation" aria-hidden={!mobileOpen}>
+        <nav id="mobile-navigation" className={`mobile-nav-panel ${mobileOpen ? 'is-open' : ''}`} aria-label={localized('Mobile navigation')} aria-hidden={!mobileOpen}>
           {menuGroups.map((group) => (
             <div className="mobile-nav-group" key={group.key}>
               <div className="mobile-nav-group-row">
-                <Link href={group.href} className={pathIsActive(pathname, group.href) ? 'is-active' : undefined} tabIndex={mobileOpen ? 0 : -1}>{group.label}</Link>
-                <button type="button" aria-label={`${openMobileGroup === group.key ? 'Collapse' : 'Expand'} ${group.label} links`} aria-expanded={openMobileGroup === group.key} aria-controls={openMobileGroup === group.key ? `mobile-${group.key}-submenu` : undefined} onClick={() => setOpenMobileGroup((current) => current === group.key ? null : group.key)} tabIndex={mobileOpen ? 0 : -1}>{openMobileGroup === group.key ? '−' : '+'}</button>
+                <Link href={group.href} className={groupIsActive(pathname, group, locale) ? 'is-active' : undefined} tabIndex={mobileOpen ? 0 : -1}>{localized(group.label)}</Link>
+                <button type="button" aria-label={`${localized(openMobileGroup === group.key ? 'Collapse' : 'Expand')} ${localized(group.label)} ${localized('links')}`} aria-expanded={openMobileGroup === group.key} aria-controls={openMobileGroup === group.key ? `mobile-${group.key}-submenu` : undefined} onClick={() => setOpenMobileGroup((current) => current === group.key ? null : group.key)} tabIndex={mobileOpen ? 0 : -1}>{openMobileGroup === group.key ? '−' : '+'}</button>
               </div>
               {openMobileGroup === group.key && <div className="mobile-subnav" id={`mobile-${group.key}-submenu`}>
-                {group.key === 'services' && <Link href="/features" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>Engineering standards<span aria-hidden="true">↗</span></Link>}
-                {group.items.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>{item.title}<span aria-hidden="true">↗</span></Link>)}
+                {group.key === 'services' && <Link href="/features" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>{localized('Engineering standards')}<span aria-hidden="true">↗</span></Link>}
+                {group.key === 'work' && <Link href="/work" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>{localized('Case studies')}<span aria-hidden="true">↗</span></Link>}
+                {group.items.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>{localized(item.title)}<span aria-hidden="true">↗</span></Link>)}
               </div>}
             </div>
           ))}
-          <Link href="/about" className={pathIsActive(pathname, '/about') ? 'is-active' : undefined} onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>About</Link>
-          <a href={clientPortalUrl} target="_blank" rel="noreferrer" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>Client portal ↗</a>
-          <Link href="/contact" className="nav-cta mobile-cta" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>Start a project <span>↗</span></Link>
+          <Link href="/about" className={pathIsActive(pathname, localePath('/about', locale)) ? 'is-active' : undefined} onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>{localized('About')}</Link>
+          <a href={clientPortalUrl} target="_blank" rel="noreferrer" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>{localized('Client portal')} ↗</a>
+          <LanguagePicker locale={locale} pathname={pathname || '/'} mobile />
+          <Link href="/contact" className="nav-cta mobile-cta" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>{localized('Start a project')} <span>↗</span></Link>
         </nav>
       </header>
     </>

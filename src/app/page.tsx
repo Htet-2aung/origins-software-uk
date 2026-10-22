@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import PremiumLanding from '@/app/components/PremiumLanding';
+import { localizeMetadata } from './metadata';
 
-export const metadata: Metadata = {
-  title: { absolute: 'Origins Software | Software built to hold up' },
-  description: 'Dependable digital products, software platforms, cloud infrastructure and AI-enabled workflows for ambitious teams.',
-  alternates: { canonical: '/' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const localized = await localizeMetadata(
+    'Origins Software | Software for the work that matters',
+    'Origins Software designs, builds and operates dependable digital products, business platforms and cloud systems for ambitious teams.',
+  );
+  return { ...localized, title: { absolute: localized.title } };
+}
 
 export default function Home() {
   return <PremiumLanding />;
