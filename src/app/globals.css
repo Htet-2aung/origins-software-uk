@@ -2425,22 +2425,3 @@ html[data-motion="reduce"] [data-motion] { opacity: 1 !important; filter: none !
     min-height: 0;
   }
 }
-/* WORK SECTION WRAPPER */
-        .work-section-wrapper {
-          width: 100vw;
-          position: relative;
-          left: 50%;
-          right: 50%;
-          margin-left: -50vw;
-          margin-right: -50vw;
-          background: linear-gradient(180deg, rgba(255,255,255,0.01) 0%, rgba(0,0,0,0.2) 100%);
-          border-top: 1px solid var(--surface-border);
-          border-bottom: 1px solid var(--surface-border);
-        }
-        
-        .work-heading-aside p {
-          color: var(--text-secondary);
-          font-size: 1.05rem;
-          line-height: 1.6;
-          margin-bottom: 1rem;
-        }

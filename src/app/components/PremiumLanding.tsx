@@ -278,37 +278,35 @@ export default function PremiumLanding() {
       </section>
 
       {/* --- WORK SECTION --- */}
-      <section className="work-section-wrapper" id="work">
-        <div className="shell tight-section">
-          <div className="section-heading split-heading work-heading" data-reveal>
-            <div>
-              <div className="eyebrow mono-accent">{localized('The work')}</div>
-              <h2 className="premium-h2">{localized('Problems first.')}<br /><em className="italic-accent">{localized('Technology second.')}</em></h2>
-            </div>
-            <div className="work-heading-aside">
-              <p>{localized('Good engineering starts with the job the system needs to do. These are representative problem areas across product, platform and automation work.')}</p>
-              <Link className="text-link premium-text-link" href="/work">{localized('Explore our approach')} <span className="icon-smooth">↗</span></Link>
-            </div>
+      <section className="work-section bento-section shell tight-section" id="work">
+        <div className="section-heading split-heading work-heading" data-reveal>
+          <div>
+            <div className="eyebrow mono-accent">{localized('The work')}</div>
+            <h2 className="premium-h2">{localized('Problems first.')}<br /><em className="italic-accent">{localized('Technology second.')}</em></h2>
           </div>
+          <div className="work-heading-aside">
+            <p>{localized('Good engineering starts with the job the system needs to do. These are representative problem areas across product, platform and automation work.')}</p>
+            <Link className="text-link premium-text-link" href="/work">{localized('Explore our approach')} <span className="icon-smooth">↗</span></Link>
+          </div>
+        </div>
 
-          <div className="project-list bento-grid">
-            {projectTypes.map((project, i) => (
-              <article className="project-row bento-card" key={project.number} data-reveal data-delay={i * 100}>
-                <div className="card-top">
-                  <div className="project-number mono-accent">{project.number}</div>
-                  <div className="eyebrow project-sector mono-tag">{localized(project.sector)}</div>
-                </div>
-                <div className="project-content">
-                  <h3 className="card-title">{localized(project.title)}</h3>
-                  <p className="card-text">{localized(project.text)}</p>
-                </div>
-                <div className="card-bottom">
-                  <div className="project-disciplines">{localized(project.disciplines)}</div>
-                  <div className="project-symbol bento-arrow" aria-hidden="true">↗</div>
-                </div>
-              </article>
-            ))}
-          </div>
+        <div className="project-list bento-grid">
+          {projectTypes.map((project, i) => (
+            <article className="project-row bento-card" key={project.number} data-reveal data-delay={i * 100}>
+              <div className="card-top">
+                <div className="project-number mono-accent">{project.number}</div>
+                <div className="eyebrow project-sector mono-tag">{localized(project.sector)}</div>
+              </div>
+              <div className="project-content">
+                <h3 className="card-title">{localized(project.title)}</h3>
+                <p className="card-text">{localized(project.text)}</p>
+              </div>
+              <div className="card-bottom">
+                <div className="project-disciplines">{localized(project.disciplines)}</div>
+                <div className="project-symbol bento-arrow" aria-hidden="true">↗</div>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -571,24 +569,7 @@ export default function PremiumLanding() {
         .bento-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--surface-border); padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px; transition: transform 0.4s var(--premium-ease), background 0.4s var(--premium-ease); border-radius: 8px; }
         .bento-card:hover { background: rgba(255, 255, 255, 0.04); transform: translateY(-3px); }
         
-        .card-top { 
-          display: flex; 
-          justify-content: flex-start; 
-          align-items: center; 
-          gap: 0.75rem;                
-          margin-bottom: 1rem; 
-        }
-
-        /* Removes the stray 10px bottom margin from globals.css that was breaking the alignment */
-        .card-top .project-sector {
-          margin-bottom: 0 !important;
-        }
-
-        /* Locks the number's line-height so it optically matches the bordered tag */
-        .card-top .project-number {
-          line-height: 1;
-          margin-top: 2px; /* Slight optical nudge to match the text baseline */
-        }
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 1rem; }
         .card-title { font-size: 1.25rem; font-weight: 400; margin-bottom: 0.5rem; }
         .card-text { color: var(--text-secondary); line-height: 1.5; font-size: 0.9rem; }
         .card-bottom { margin-top: 1rem; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--surface-border); padding-top: 1rem; }
