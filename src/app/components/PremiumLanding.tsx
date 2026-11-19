@@ -1180,7 +1180,18 @@ export default function PremiumLanding() {
         <div className="enquiry-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEnquiryOpen(false); }}>
           <section className="enquiry-dialog" role="dialog" aria-modal="true" aria-labelledby="enquiry-title">
             <div className="enquiry-dialog-top">
-              <div className="enquiry-brand"><span className="enquiry-brand-mark">O</span><span>ORIGINS <small>{localized('PROJECT ENQUIRY')}</small></span></div>
+              <div className="enquiry-brand">
+  <img
+    src="/origins-icon.png"
+    alt="Origins Software"
+    className="enquiry-brand-logo"
+    width={28}
+    height={28}
+  />
+  <span>
+    ORIGINS <small>{localized('PROJECT ENQUIRY')}</small>
+  </span>
+</div>
               <button type="button" className="enquiry-close" aria-label={localized('Close enquiry')} onClick={() => setEnquiryOpen(false)}>×</button>
             </div>
             <div className="enquiry-progress"><span className={enquiryStep === 1 ? 'is-active' : 'is-complete'} /><span className={enquiryStep === 2 ? 'is-active' : ''} /></div>
@@ -1295,19 +1306,26 @@ export default function PremiumLanding() {
         .origins-studio textarea:focus-visible { outline: 2px solid var(--os-accent); outline-offset: 3px; }
         .origins-studio .os-button:disabled { opacity: .58; cursor: wait; transform: none; }
         .os-shell { width: min(1460px, calc(100% - 96px)); margin-inline: auto; }
-        .os-hero { position: relative; padding: 74px 0 26px; isolation: isolate; }
+        .os-hero { position: relative; padding: 4px 0 26px; isolation: isolate; }
         .hero-ambient { position: absolute; z-index: -1; top: -260px; right: -160px; width: 900px; height: 900px; border-radius: 50%; background: radial-gradient(circle, rgba(31,181,168,.09), transparent 67%); pointer-events: none; }
-        .hero-layout { display: grid; grid-template-columns: minmax(390px,.82fr) minmax(620px,1.18fr); align-items: center; gap: clamp(40px,5vw,88px); }
-        .hero-copy { max-width: 620px; padding: 18px 0 24px; }
+        .hero-layout { display: grid; grid-template-columns: minmax(390px,.82fr) minmax(620px,1.18fr); align-items: start; gap: clamp(40px,5vw,88px); }
+        .hero-copy { max-width: 620px; padding: 0 0 24px; }
         .os-eyebrow, .section-kicker, .market-card-kicker { display: inline-flex; align-items: center; gap: 10px; color: var(--os-muted); font: 500 10px/1.4 "JetBrains Mono", "IBM Plex Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
         .eyebrow-mark { width: 7px; height: 7px; border-radius: 50%; background: var(--os-accent); box-shadow: 0 0 0 4px rgba(205,220,57,.09); }
-        .hero-overline { margin: 48px 0 18px; color: #7f96a0; font: 500 10px/1.5 "JetBrains Mono", monospace; letter-spacing: .14em; }
+        .hero-overline { margin: 20px 0 12px; color: #7f96a0; font: 500 10px/1.5 "JetBrains Mono", monospace; letter-spacing: .14em; }
         .hero-overline span { color: var(--os-accent); padding: 0 5px; }
-        .hero-copy h1 { max-width: 680px; margin: 0; color: var(--os-text); font-size: clamp(48px,5.6vw,82px); font-weight: 560; line-height: .99; letter-spacing: -.065em; }
+      .hero-copy h1 {
+  max-width: 680px;
+  margin: 0;
+  color: var(--os-text);
+  font-size: clamp(56px, 5.4vw, 80px);
+  font-weight: 560;
+  line-height: 0.99;
+  letter-spacing: -.06em;
+}
         .hero-copy h1 em, .section-intro h2 em, .cta-copy h2 em { color: var(--os-accent); font-style: normal; }
-        .hero-description { max-width: 560px; margin: 30px 0 0; color: #a9bbc4; font-size: 16px; line-height: 1.85; }
-        .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 34px; }
-        .origins-studio .os-button { display: inline-flex !important; min-height: 46px !important; align-items: center !important; justify-content: center !important; gap: 8px !important; padding: 14px 32px !important; border: 1px solid transparent !important; border-radius: 999px !important; cursor: pointer !important; font-family: var(--font-body) !important; font-size: 15px !important; font-weight: 600 !important; line-height: 1.2 !important; letter-spacing: .01em !important; transition: all .3s cubic-bezier(.16,1,.3,1) !important; }
+        .hero-description { max-width: 560px; margin: 18px 0 0; color: #a9bbc4; font-size: 15px; line-height: 1.7; }
+        .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; margin-top: 22px; }        .origins-studio .os-button { display: inline-flex !important; min-height: 46px !important; align-items: center !important; justify-content: center !important; gap: 8px !important; padding: 14px 32px !important; border: 1px solid transparent !important; border-radius: 999px !important; cursor: pointer !important; font-family: var(--font-body) !important; font-size: 15px !important; font-weight: 600 !important; line-height: 1.2 !important; letter-spacing: .01em !important; transition: all .3s cubic-bezier(.16,1,.3,1) !important; }
         .origins-studio .os-button:hover { transform: translateY(-2px) !important; }
         .origins-studio .os-button span { display: inline-block !important; font-size: 16px !important; line-height: 1 !important; transition: transform .3s cubic-bezier(.16,1,.3,1) !important; }
         .origins-studio .os-button-primary { border: 0 !important; background: var(--os-accent) !important; color: #0b1114 !important; box-shadow: 0 4px 15px rgba(205,220,57,.15) !important; }
@@ -1315,9 +1333,9 @@ export default function PremiumLanding() {
         .origins-studio .os-button-primary:hover span { transform: translate(3px,-3px) !important; }
         .origins-studio .os-button-text { min-height: 42px !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--os-text) !important; box-shadow: none !important; font-size: 12px !important; font-weight: 500 !important; }
         .origins-studio .os-button-text:hover { color: var(--os-accent) !important; }
-        .hero-assurance { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 42px; color: #8196a0; font-size: 10px; letter-spacing: .015em; }
+        .hero-assurance { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; color: #8196a0; font-size: 10px; letter-spacing: .015em; }
         .hero-assurance i { width: 3px; height: 3px; border-radius: 50%; background: var(--os-accent); }
-        .hero-client-link { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 29px; padding-top: 17px; border-top: 1px solid rgba(169,188,199,.12); color: #718791; font-size: 11px; }
+        .hero-client-link { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(169,188,199,.12); color: #718791; font-size: 11px; }
         .hero-client-link a { color: #d5dfe2; transition: color .2s ease; }
         .hero-client-link a:hover { color: var(--os-accent); }
         .hero-client-link a span { padding-left: 4px; color: var(--os-accent); }
@@ -1413,6 +1431,14 @@ export default function PremiumLanding() {
         .enquiry-dialog-top { display: flex; align-items: center; justify-content: space-between; padding: 19px 25px; border-bottom: 1px solid rgba(169,188,199,.12); }
         .enquiry-brand { display: flex; align-items: center; gap: 11px; color: #eff4f5; font-size: 11px; font-weight: 750; letter-spacing: .13em; }
         .enquiry-brand-mark { display: grid; width: 27px; height: 27px; place-items: center; background: var(--os-accent); color: #07151c; font-size: 15px; font-weight: 800; }
+        .enquiry-brand-logo {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
         .enquiry-brand small { display: block; margin-top: 3px; color: #8da2ab; font: 8px "JetBrains Mono", monospace; letter-spacing: .12em; }
         .enquiry-close { display: grid; width: 33px; height: 33px; place-items: center; border: 1px solid rgba(169,188,199,.2); background: transparent; color: #b8c7cc; cursor: pointer; font-size: 23px; line-height: 1; }
         .enquiry-close:hover { border-color: var(--os-accent); color: var(--os-accent); }
@@ -1462,29 +1488,31 @@ export default function PremiumLanding() {
 
         .motion-ready [data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1); }
         .motion-ready [data-reveal].is-visible { opacity: 1; transform: translateY(0); }
-        @media (max-width: 1220px) {
-          .os-shell { width: min(100% - 56px,1460px); }
-          .hero-layout { grid-template-columns: minmax(330px,.78fr) minmax(540px,1.22fr); gap: 35px; }
-          .market-card-content { grid-template-columns: minmax(0,1.2fr) minmax(215px,.8fr); }
-          .market-card-heading { padding-inline: 18px; }
-          .market-directory { padding-inline: 13px; }
-        }
+    @media (max-width: 1220px) {
+  .os-shell { width: min(100% - 56px,1460px); }
+  .hero-layout { grid-template-columns: minmax(330px,.78fr) minmax(540px,1.22fr); gap: 35px; }
+  .hero-copy h1 { font-size: clamp(52px, 5vw, 68px); }
+  .market-card-content { grid-template-columns: minmax(0,1.2fr) minmax(215px,.8fr); }
+  .market-card-heading { padding-inline: 18px; }
+  .market-directory { padding-inline: 13px; }
+}
         @media (max-width: 980px) {
-          .os-shell { width: calc(100% - 48px); }
-          .os-hero { padding-top: 55px; }
-          .hero-layout { grid-template-columns: 1fr; gap: 42px; }
-          .hero-copy { max-width: 750px; padding-bottom: 0; }
-          .hero-overline { margin-top: 32px; }
-          .hero-market-card { width: 100%; }
-          .section-intro { grid-template-columns: 1fr; gap: 22px; }
-          .section-intro > p { max-width: 680px; }
-          .cta-inner { align-items: flex-start; flex-direction: column; gap: 35px; }
-          .cta-actions { flex-direction: row; flex-wrap: wrap; align-items: center; }
-        }
+  .os-shell { width: calc(100% - 48px); }
+  .os-hero { padding-top: 4px; }
+  .hero-layout { grid-template-columns: 1fr; gap: 42px; }
+  .hero-copy { max-width: 750px; padding-bottom: 0; }
+  .hero-overline { margin-top: 18px; }
+  .hero-market-card { width: 100%; }
+  .section-intro { grid-template-columns: 1fr; gap: 22px; }
+  .section-intro > p { max-width: 680px; }
+  .cta-inner { align-items: flex-start; flex-direction: column; gap: 35px; }
+  .cta-actions { flex-direction: row; flex-wrap: wrap; align-items: center; }
+}
         @media (max-width: 680px) {
           .os-shell { width: calc(100% - 36px); }
-          .os-hero { padding-top: 34px; }
-          .hero-copy h1 { font-size: clamp(44px,12vw,62px); }
+  .os-hero { padding-top: 4px; }
+  .hero-copy h1 { font-size: clamp(44px,12vw,62px); }
+  .hero-overline { margin-top: 18px; }
           .hero-description { margin-top: 22px; font-size: 14px; }
           .hero-assurance { gap: 8px; font-size: 9px; }
           .market-card-heading { align-items: flex-start; flex-direction: column; gap: 9px; padding: 17px; }
